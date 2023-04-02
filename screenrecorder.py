@@ -146,9 +146,11 @@ from queue import Queue
 from mss import mss
 from PIL import Image, ImageChops, ImageOps, ImageFilter
 import pytesseract
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QVBoxLayout, QPushButton, QWidget
+from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QVBoxLayout, QPushButton, QWidget, QComboBox,QHBoxLayout
 from PyQt5.QtCore import QThread, pyqtSignal, Qt
 from textprocessor import TextProcessor
+from PyQt5.QtGui import QPixmap
+from io import BytesIO
 
 
 def ocr_screenshot(image):
@@ -171,9 +173,9 @@ def upscale_image(image, scale_factor=2.0):
 def binarize_image(image, block_size=15, offset=5):
     return image.filter(ImageFilter.UnsharpMask).convert('1', dither=Image.NONE)
 
-def capture_screenshot():
+def capture_screenshot(monitor_index):
     with mss() as sct:
-        monitor = sct.monitors[1]  # Use the first monitor (change the index to select a different monitor)
+        monitor = sct.monitors[monitor_index]
         screenshot = sct.grab(monitor)
         return Image.frombytes("RGB", screenshot.size, screenshot.rgb)
 
@@ -210,6 +212,8 @@ class MainWindow(QMainWindow):
         self.text_processor = TextProcessor()
 
         self.initUI()
+        self.initial_size = self.size()  # Store the initial window size
+
 
     def initUI(self):
         central_widget = QWidget()
@@ -220,6 +224,19 @@ class MainWindow(QMainWindow):
         self.label = QLabel("OCR Result:")
         layout.addWidget(self.label)
 
+        monitor_selection_layout = QHBoxLayout()
+        self.monitor_label = QLabel("Select monitor:")
+        self.monitor_combo = QComboBox()
+        monitor_selection_layout.addWidget(self.monitor_label)
+        monitor_selection_layout.addWidget(self.monitor_combo)
+        layout.addLayout(monitor_selection_layout)
+
+        self.monitor_info_label = QLabel("Monitor info:")
+        layout.addWidget(self.monitor_info_label)
+
+        self.preview_label = QLabel("Monitor Preview:")
+        layout.addWidget(self.preview_label)
+
         self.capture_button = QPushButton("Start Capturing")
         self.capture_button.clicked.connect(self.toggle_capturing)
         layout.addWidget(self.capture_button)
@@ -228,33 +245,77 @@ class MainWindow(QMainWindow):
         self.setGeometry(100, 100, 600, 400)
         self.show()
 
+        self.populate_monitor_combo()
+        self.monitor_combo.currentIndexChanged.connect(self.update_monitor_preview)
+
         self.capturing = False
         self.capture_thread = None
+
+    def populate_monitor_combo(self):
+        with mss() as sct:
+            for i, monitor in enumerate(sct.monitors[1:], 1):
+                self.monitor_combo.addItem(f"Monitor {i}", i)
+        self.monitor_combo.setCurrentIndex(0)
+        self.update_monitor_preview(0)
+    
+
+    def update_monitor_preview(self, index):
+        monitor_index = self.monitor_combo.currentData()
+        with mss() as sct:
+            monitor = sct.monitors[monitor_index]
+            monitor_info = f"Monitor {monitor_index}: {monitor['width']}x{monitor['height']}"
+            self.monitor_info_label.setText(monitor_info)
+
+            # Capture and show a preview of the selected monitor
+            screenshot = sct.grab(monitor)
+            image = Image.frombytes("RGB", screenshot.size, screenshot.rgb)
+            image = image.resize((640, 400), Image.ANTIALIAS)
+            buffer = BytesIO()
+            image.save(buffer, format="PNG")
+            pixmap = QPixmap()
+            pixmap.loadFromData(buffer.getvalue())
+            self.preview_label.setPixmap(pixmap)
 
     def toggle_capturing(self):
         if self.capturing:
             self.capture_button.setText("Start Capturing")
             self.capturing = False
+            self.preview_label.show()
+            self.monitor_label.show()
+            self.monitor_combo.show()
+            self.monitor_info_label.show()
+            self.label.setText("OCR Result:")
+            self.monitor_label.setText("Select monitor:")
+            self.resize(self.initial_size)  # Set the window size back to the initial size
         else:
             self.capture_button.setText("Stop Capturing")
             self.capturing = True
             self.capture_thread = threading.Thread(target=self.capture_loop)
             self.capture_thread.daemon = True
             self.capture_thread.start()
+            self.preview_label.hide()
+            self.monitor_label.clear()
+            self.monitor_combo.hide()
+            self.monitor_info_label.hide()
+
+
+
 
     def capture_loop(self):
-        prev_screenshot = capture_screenshot().convert("L")  # Convert to grayscale
-        prev_screenshot = upscale_image(prev_screenshot)   # Downscale image
+        monitor_index = self.monitor_combo.currentData()
+        prev_screenshot = capture_screenshot(monitor_index).convert("L")  # Convert to grayscale
+        prev_screenshot = upscale_image(prev_screenshot)  # Downscale image
 
         while self.capturing:
             time.sleep(5)
-            new_screenshot = capture_screenshot().convert("L")  # Convert to grayscale
-            new_screenshot = upscale_image(new_screenshot)    # Downscale image
+            new_screenshot = capture_screenshot(monitor_index).convert("L")  # Convert to grayscale
+            new_screenshot = upscale_image(new_screenshot)  # Downscale image
 
             if has_changed(prev_screenshot, new_screenshot):
                 prev_screenshot = new_screenshot
                 new_screenshot.save("sample_screenshot.png")
                 self.screenshot_queue.put(new_screenshot)
+
 
     def update_ocr_result(self, text):
         cleaned_text = self.text_processor.process_text(text)
