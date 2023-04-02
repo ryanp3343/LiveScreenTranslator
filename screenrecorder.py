@@ -153,10 +153,9 @@ from PyQt5.QtGui import QPixmap
 from io import BytesIO
 
 
-def ocr_screenshot(image):
-    # If you need to set a specific Tesseract path on Windows, uncomment the following line:
+def ocr_screenshot(image, language_code):
     pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-    config = '--psm 6'  # Adjust the page segmentation mode (6 = Assume a single block of text)
+    config = f'-l {language_code} --psm 6'
     return pytesseract.image_to_string(image, config=config)
 
 def has_changed(prev_screenshot, new_screenshot, threshold=5):
@@ -187,18 +186,18 @@ def downscale_image(image, scale_factor=0.5):
 class OCRWorker(QThread):
     ocr_result = pyqtSignal(str)
 
-    def __init__(self, screenshot_queue):
+    def __init__(self, screenshot_queue,language_combo):
         super(OCRWorker, self).__init__()
         self.screenshot_queue = screenshot_queue
+        self.language_combo = language_combo
 
     def run(self):
         while True:
-            screenshot = self.screenshot_queue.get()
+            screenshot, language_code = self.screenshot_queue.get()
             screenshot = upscale_image(screenshot)
             screenshot = binarize_image(screenshot)
-            text = ocr_screenshot(screenshot)
+            text = ocr_screenshot(screenshot, language_code)
             self.ocr_result.emit(text)
-
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -206,7 +205,8 @@ class MainWindow(QMainWindow):
 
         # Create a queue to store screenshots and worker to process them
         self.screenshot_queue = Queue()
-        self.ocr_worker = OCRWorker(self.screenshot_queue)
+        self.initUI()
+        self.ocr_worker = OCRWorker(self.screenshot_queue, self.language_combo)
         self.ocr_worker.ocr_result.connect(self.update_ocr_result)
         self.ocr_worker.start()
         self.text_processor = TextProcessor()
@@ -220,6 +220,24 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout()
         central_widget.setLayout(layout)
         self.setCentralWidget(central_widget)
+        top_layout = QHBoxLayout()
+
+        # Add language-related widgets to the layout
+        self.language_label = QLabel("Translate From:")
+        self.language_combo = QComboBox()
+        top_layout.addWidget(self.language_label)
+        top_layout.addWidget(self.language_combo)
+
+        # Add new widgets to the layout
+        self.new_label = QLabel("Translate To:")
+        self.new_combo = QComboBox()
+        top_layout.addWidget(self.new_label)
+        top_layout.addWidget(self.new_combo)
+
+        # Add the QHBoxLayout to the main layout
+        layout.addLayout(top_layout)
+
+        self.populate_language_combo()
 
         self.label = QLabel("OCR Result:")
         layout.addWidget(self.label)
@@ -241,7 +259,9 @@ class MainWindow(QMainWindow):
         self.capture_button.clicked.connect(self.toggle_capturing)
         layout.addWidget(self.capture_button)
 
-        self.setWindowTitle("OCR Screenshot")
+ 
+
+        self.setWindowTitle("LiveScreen Translator")
         self.setGeometry(100, 100, 600, 400)
         self.show()
 
@@ -257,6 +277,16 @@ class MainWindow(QMainWindow):
                 self.monitor_combo.addItem(f"Monitor {i}", i)
         self.monitor_combo.setCurrentIndex(0)
         self.update_monitor_preview(0)
+
+    def populate_language_combo(self):
+        languages = [
+            ("English", "eng"),
+            ("German", "deu"),
+            # Add more languages here as needed
+        ]
+        for language, code in languages:
+            self.language_combo.addItem(language, code)
+
     
 
     def update_monitor_preview(self, index):
@@ -284,6 +314,10 @@ class MainWindow(QMainWindow):
             self.monitor_label.show()
             self.monitor_combo.show()
             self.monitor_info_label.show()
+            self.language_label.show()
+            self.language_combo.show()
+            self.new_label.show()
+            self.new_combo.show()
             self.label.setText("OCR Result:")
             self.monitor_label.setText("Select monitor:")
             self.resize(self.initial_size)  # Set the window size back to the initial size
@@ -297,24 +331,27 @@ class MainWindow(QMainWindow):
             self.monitor_label.clear()
             self.monitor_combo.hide()
             self.monitor_info_label.hide()
-
-
-
+            self.language_label.hide()
+            self.language_combo.hide()
+            self.new_label.hide()
+            self.new_combo.hide()
 
     def capture_loop(self):
         monitor_index = self.monitor_combo.currentData()
         prev_screenshot = capture_screenshot(monitor_index).convert("L")  # Convert to grayscale
-        prev_screenshot = upscale_image(prev_screenshot)  # Downscale image
+        prev_screenshot = upscale_image(prev_screenshot)   # Downscale image
 
         while self.capturing:
             time.sleep(5)
             new_screenshot = capture_screenshot(monitor_index).convert("L")  # Convert to grayscale
-            new_screenshot = upscale_image(new_screenshot)  # Downscale image
+            new_screenshot = upscale_image(new_screenshot)    # Downscale image
 
             if has_changed(prev_screenshot, new_screenshot):
                 prev_screenshot = new_screenshot
                 new_screenshot.save("sample_screenshot.png")
-                self.screenshot_queue.put(new_screenshot)
+                language_code = self.language_combo.currentData()
+                self.screenshot_queue.put((new_screenshot, language_code))
+
 
 
     def update_ocr_result(self, text):
