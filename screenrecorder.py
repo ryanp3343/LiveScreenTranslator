@@ -10,7 +10,8 @@ from PyQt5.QtCore import QThread, pyqtSignal, Qt
 from textprocessor import TextProcessor
 from PyQt5.QtGui import QPixmap
 from io import BytesIO
-from languages import LANGUAGES
+from languages_ocr import LANGUAGES_OCR
+from languages_google import LANGUAGES_GOOGLE
 
 
 def ocr_screenshot(image, language_code):
@@ -140,11 +141,11 @@ class MainWindow(QMainWindow):
         self.update_monitor_preview(0)
 
     def populate_language_from_combo(self):
-        for language, code in LANGUAGES:
+        for language, code in LANGUAGES_OCR:
             self.language_from_combo.addItem(language, code)
 
     def populate_language_to_combo(self):
-        for language, code in LANGUAGES:
+        for language, code in LANGUAGES_GOOGLE:
             self.language_to_combo.addItem(language, code)
 
     def update_monitor_preview(self, index):
@@ -210,11 +211,12 @@ class MainWindow(QMainWindow):
                 language_code = self.language_from_combo.currentData()
                 self.screenshot_queue.put((new_screenshot, language_code))
 
-
-
     def update_ocr_result(self, text):
         cleaned_text = self.text_processor.process_text(text)
-        self.label.setText("OCR Result:\n\n" + cleaned_text)
+        language_to = self.language_to_combo.currentData()
+        translated_text = self.text_processor.translate_text(cleaned_text, target_language=language_to)
+        self.label.setText("OCR Result:\n\n" + translated_text)
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
