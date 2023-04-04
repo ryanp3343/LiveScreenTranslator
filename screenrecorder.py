@@ -6,17 +6,51 @@ from mss import mss
 from PIL import Image, ImageChops, ImageOps, ImageFilter
 import pytesseract
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QVBoxLayout, QPushButton, QWidget, QComboBox,QHBoxLayout
-from PyQt5.QtCore import QThread, pyqtSignal, Qt
+from PyQt5.QtCore import QThread, pyqtSignal, Qt, QPoint, QRect
 from textprocessor import TextProcessor
-from PyQt5.QtGui import QPixmap
+from PyQt5.QtGui import QPixmap, QPainter, QPen, QColor
 from io import BytesIO
 from languages_ocr import LANGUAGES_OCR
 from languages_google import LANGUAGES_GOOGLE
+import cv2
+import numpy as np
+from skimage.transform import rotate
+from skimage import io
 
+def adaptive_thresholding(image):
+    gray_image = image.convert("L")
+    return gray_image.point(lambda x: 0 if x < 128 else 255, '1')
+
+def increase_contrast(image, alpha=1.5, beta=20):
+    new_image = np.zeros(image.shape, image.dtype)
+    new_image = cv2.convertScaleAbs(image, alpha=alpha, beta=beta)
+    return new_image
+
+def apply_gaussian_blur(image, kernel_size=(5, 5)):
+    blurred_image = cv2.GaussianBlur(image, kernel_size, 0)
+    return blurred_image
+
+def deskew_image(image):
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+    coords = np.column_stack(np.where(thresh > 0))
+    angle = cv2.minAreaRect(coords)[-1]
+    
+    if angle < -45:
+        angle = -(90 + angle)
+    else:
+        angle = -angle
+
+    (h, w) = image.shape[:2]
+    center = (w // 2, h // 2)
+    M = cv2.getRotationMatrix2D(center, angle, 1.0)
+    deskewed_image = cv2.warpAffine(image, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+    
+    return deskewed_image
 
 def ocr_screenshot(image, language_code):
     pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-    config = f'-l {language_code} --psm 6'
+    config = f'-l {language_code} --psm 3 --oem 1'
     return pytesseract.image_to_string(image, config=config)
 
 def has_changed(prev_screenshot, new_screenshot, threshold=5):
@@ -33,11 +67,11 @@ def upscale_image(image, scale_factor=2.0):
 def binarize_image(image, block_size=15, offset=5):
     return image.filter(ImageFilter.UnsharpMask).convert('1', dither=Image.NONE)
 
-def capture_screenshot(monitor_index):
+def capture_screenshot(monitor):
     with mss() as sct:
-        monitor = sct.monitors[monitor_index]
         screenshot = sct.grab(monitor)
-        return Image.frombytes("RGB", screenshot.size, screenshot.rgb)
+        return Image.frombytes("RGB", screenshot.size, screenshot.bgra, "raw", "BGRX")
+
 
 def downscale_image(image, scale_factor=0.5):
     width, height = image.size
@@ -56,31 +90,85 @@ class OCRWorker(QThread):
         while True:
             screenshot, language_code = self.screenshot_queue.get()
             screenshot = upscale_image(screenshot)
-            screenshot = binarize_image(screenshot)
+            screenshot = adaptive_thresholding(screenshot)
             text = ocr_screenshot(screenshot, language_code)
             self.ocr_result.emit(text)
+
+class TransparentWindow(QWidget):
+    def __init__(self, main_window, monitor_index):
+        super().__init__()
+        self.main_window = main_window
+        self.monitor_index = monitor_index
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Dialog)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setAttribute(Qt.WA_NoSystemBackground)
+
+        with mss() as sct:
+            monitor = sct.monitors[self.monitor_index]
+            x, y, width, height = monitor["left"], monitor["top"], monitor["width"], monitor["height"]
+            self.setGeometry(x, y, width, height)
+
+        self.start_point = None
+        self.end_point = None
+        self.selection_rect = None
+        self.pen = QPen(Qt.red)
+        self.pen.setWidth(2)
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setBrush(QColor(0, 0, 0, 100))
+        painter.drawRect(self.rect())
+
+        if self.start_point and self.end_point:
+            rect = QRect(self.start_point, self.end_point)
+            rect = rect.normalized()  # Normalize the rectangle to handle negative width/height
+
+            painter.setPen(self.pen)
+            painter.drawRect(rect)
+
+    def mousePressEvent(self, event):
+        self.start_point = event.pos()
+        self.end_point = event.pos()
+        self.update()
+
+    def mouseMoveEvent(self, event):
+        self.end_point = event.pos()
+        self.update()
+
+    def mouseReleaseEvent(self, event):
+        self.end_point = event.pos()
+        self.main_window.update_capture_area(self.start_point, self.end_point, self.geometry())
+        self.close()
+
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
+        self.capture_area = None
+        self.monitor_index = None
+        self.initUI()
+
         # Create a queue to store screenshots and worker to process them
         self.screenshot_queue = Queue()
-        self.initUI()
         self.ocr_worker = OCRWorker(self.screenshot_queue, self.language_from_combo)
         self.ocr_worker.ocr_result.connect(self.update_ocr_result)
         self.ocr_worker.start()
         self.text_processor = TextProcessor()
-
-        self.initUI()
-        self.initial_size = self.size()  # Store the initial window size
-
 
     def initUI(self):
         central_widget = QWidget()
         layout = QVBoxLayout()
         central_widget.setLayout(layout)
         self.setCentralWidget(central_widget)
+
+        self.select_area_button = QPushButton("Select Area")
+        self.select_area_button.clicked.connect(self.show_transparent_window)
+        layout.addWidget(self.select_area_button)
+
+
         top_layout = QHBoxLayout()
 
         # Add language-related widgets to the layout
@@ -121,8 +209,6 @@ class MainWindow(QMainWindow):
         self.capture_button.clicked.connect(self.toggle_capturing)
         layout.addWidget(self.capture_button)
 
- 
-
         self.setWindowTitle("LiveScreen Translator")
         self.setGeometry(100, 100, 600, 400)
         self.show()
@@ -132,6 +218,15 @@ class MainWindow(QMainWindow):
 
         self.capturing = False
         self.capture_thread = None
+
+    def update_capture_area(self, start, end, geometry):
+        self.capture_area = (start.x(), start.y(), end.x() - start.x(), end.y() - start.y())
+        self.capture_geometry = geometry
+
+    def show_transparent_window(self):
+        monitor_index = self.monitor_combo.currentData()
+        self.transparent_window = TransparentWindow(self, monitor_index)
+        self.transparent_window.show()
 
     def populate_monitor_combo(self):
         with mss() as sct:
@@ -196,13 +291,19 @@ class MainWindow(QMainWindow):
             self.language_to_combo.hide()
 
     def capture_loop(self):
-        monitor_index = self.monitor_combo.currentData()
-        prev_screenshot = capture_screenshot(monitor_index).convert("L")  # Convert to grayscale
+        if not self.capture_area:
+            print("Please select an area first.")
+            return
+
+        left, top, right, bottom = self.capture_area
+        monitor = {'left': left, 'top': top, 'width': right - left, 'height': bottom - top}
+        
+        prev_screenshot = capture_screenshot(monitor).convert("L")  # Convert to grayscale
         prev_screenshot = upscale_image(prev_screenshot)   # Downscale image
 
         while self.capturing:
             time.sleep(5)
-            new_screenshot = capture_screenshot(monitor_index).convert("L")  # Convert to grayscale
+            new_screenshot = capture_screenshot(monitor).convert("L")  # Convert to grayscale
             new_screenshot = upscale_image(new_screenshot)    # Downscale image
 
             if has_changed(prev_screenshot, new_screenshot):
@@ -211,11 +312,13 @@ class MainWindow(QMainWindow):
                 language_code = self.language_from_combo.currentData()
                 self.screenshot_queue.put((new_screenshot, language_code))
 
+
+
     def update_ocr_result(self, text):
         cleaned_text = self.text_processor.process_text(text)
-        language_to = self.language_to_combo.currentData()
-        translated_text = self.text_processor.translate_text(cleaned_text, target_language=language_to)
-        self.label.setText("OCR Result:\n\n" + translated_text)
+        #language_to = self.language_to_combo.currentData()
+        #translated_text = self.text_processor.translate_text(cleaned_text, target_language=language_to)
+        self.label.setText("OCR Result:\n\n" + cleaned_text)
 
 
 if __name__ == "__main__":
