@@ -1,5 +1,4 @@
 import re
-import nltk
 from googletrans import Translator
 
 class TextProcessor:
@@ -7,10 +6,16 @@ class TextProcessor:
         self.translator = Translator()
 
     def process_text(self, text):
-        # Remove all non-alphanumeric characters using a regular expression
-        cleaned_text = re.sub(r'[^a-zA-Z0-9\s]', '', text)
+        cleaned_text = re.sub(r'[^\w\s]', '', text, flags=re.UNICODE)
+        cleaned_text = re.sub(r'\s+', ' ', cleaned_text).strip()
         return cleaned_text
     
     def translate_text(self, text, target_language):
-        translation = self.translator.translate(text, dest=target_language)
-        return translation.text
+        if not text.strip():
+            return text
+        try:
+            translation = self.translator.translate(text, dest=target_language)
+            return translation.text
+        except Exception as e:
+            print(f"Error while translating: {e}")
+            return text  
