@@ -5,7 +5,7 @@ from queue import Queue
 from mss import mss
 from PIL import Image, ImageChops, ImageOps, ImageFilter
 import pytesseract
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QVBoxLayout, QPushButton, QWidget, QComboBox,QHBoxLayout
+from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QVBoxLayout, QPushButton, QWidget, QComboBox,QHBoxLayout, QDesktopWidget
 from PyQt5.QtCore import QThread, pyqtSignal, Qt, QPoint, QRect
 from textprocessor import TextProcessor
 from PyQt5.QtGui import QPixmap, QPainter, QPen, QColor
@@ -67,10 +67,25 @@ def upscale_image(image, scale_factor=2.0):
 def binarize_image(image, block_size=15, offset=5):
     return image.filter(ImageFilter.UnsharpMask).convert('1', dither=Image.NONE)
 
-def capture_screenshot(monitor):
+def capture_screenshot(monitor, monitor_index):
     with mss() as sct:
-        screenshot = sct.grab(monitor)
-        return Image.frombytes("RGB", screenshot.size, screenshot.bgra, "raw", "BGRX")
+        monitor_geometry = sct.monitors[monitor_index]
+        left = monitor["left"] + monitor_geometry["left"]
+        top = monitor["top"] + monitor_geometry["top"]
+        width = monitor["width"]
+        height = monitor["height"]
+
+        left = max(left, monitor_geometry["left"])
+        top = max(top, monitor_geometry["top"])
+        right = min(left + width, monitor_geometry["left"] + monitor_geometry["width"])
+        bottom = min(top + height, monitor_geometry["top"] + monitor_geometry["height"])
+
+        bbox = (left, top, right, bottom)
+        screenshot = sct.grab(bbox)
+        img = Image.frombytes("RGB", (screenshot.width, screenshot.height), screenshot.rgb)
+        return img
+
+
 
 
 def downscale_image(image, scale_factor=0.5):
@@ -102,10 +117,13 @@ class TransparentWindow(QWidget):
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Dialog)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setAttribute(Qt.WA_NoSystemBackground)
+        desktop = QDesktopWidget()
+        monitor_geometry = desktop.screenGeometry(monitor_index)
+        self.setGeometry(monitor_geometry)
 
         with mss() as sct:
             monitor = sct.monitors[self.monitor_index]
-            x, y, width, height = monitor["left"], monitor["top"], monitor["width"], monitor["height"]
+            x, y, width, height = monitor["left"], monitor["top"], monitor["width"] - 1, monitor["height"] - 1
             self.setGeometry(x, y, width, height)
 
         self.start_point = None
@@ -122,7 +140,7 @@ class TransparentWindow(QWidget):
 
         if self.start_point and self.end_point:
             rect = QRect(self.start_point, self.end_point)
-            rect = rect.normalized()  # Normalize the rectangle to handle negative width/height
+            rect = rect.normalized()
 
             painter.setPen(self.pen)
             painter.drawRect(rect)
@@ -151,7 +169,6 @@ class MainWindow(QMainWindow):
         self.monitor_index = None
         self.initUI()
 
-        # Create a queue to store screenshots and worker to process them
         self.screenshot_queue = Queue()
         self.ocr_worker = OCRWorker(self.screenshot_queue, self.language_from_combo)
         self.ocr_worker.ocr_result.connect(self.update_ocr_result)
@@ -171,19 +188,16 @@ class MainWindow(QMainWindow):
 
         top_layout = QHBoxLayout()
 
-        # Add language-related widgets to the layout
         self.language_from_label = QLabel("Translate From:")
         self.language_from_combo = QComboBox()
         top_layout.addWidget(self.language_from_label)
         top_layout.addWidget(self.language_from_combo)
 
-        # Add new widgets to the layout
         self.language_to_label = QLabel("Translate To:")
         self.language_to_combo = QComboBox()
         top_layout.addWidget(self.language_to_label)
         top_layout.addWidget(self.language_to_combo)
 
-        # Add the QHBoxLayout to the main layout
         layout.addLayout(top_layout)
 
         self.populate_language_from_combo()
@@ -220,8 +234,14 @@ class MainWindow(QMainWindow):
         self.capture_thread = None
 
     def update_capture_area(self, start, end, geometry):
-        self.capture_area = (start.x(), start.y(), end.x() - start.x(), end.y() - start.y())
+        monitor_geometry = self.monitor_combo.currentData()
+        with mss() as sct:
+            monitor = sct.monitors[monitor_geometry]
+            left_offset, top_offset = monitor['left'], monitor['top']
+
+        self.capture_area = (start.x() - left_offset, start.y() - top_offset, end.x() - start.x(), end.y() - start.y())
         self.capture_geometry = geometry
+
 
     def show_transparent_window(self):
         monitor_index = self.monitor_combo.currentData()
@@ -250,7 +270,6 @@ class MainWindow(QMainWindow):
             monitor_info = f"Monitor {monitor_index}: {monitor['width']}x{monitor['height']}"
             self.monitor_info_label.setText(monitor_info)
 
-            # Capture and show a preview of the selected monitor
             screenshot = sct.grab(monitor)
             image = Image.frombytes("RGB", screenshot.size, screenshot.rgb)
             image = image.resize((640, 400), Image.ANTIALIAS)
@@ -274,7 +293,6 @@ class MainWindow(QMainWindow):
             self.language_to_combo.show()
             self.label.setText("OCR Result:")
             self.monitor_label.setText("Select monitor:")
-            self.resize(self.initial_size)  # Set the window size back to the initial size
         else:
             self.capture_button.setText("Stop Capturing")
             self.capturing = True
@@ -290,21 +308,26 @@ class MainWindow(QMainWindow):
             self.language_to_label.hide()
             self.language_to_combo.hide()
 
+
     def capture_loop(self):
         if not self.capture_area:
             print("Please select an area first.")
             return
 
-        left, top, right, bottom = self.capture_area
-        monitor = {'left': left, 'top': top, 'width': right - left, 'height': bottom - top}
-        
-        prev_screenshot = capture_screenshot(monitor).convert("L")  # Convert to grayscale
-        prev_screenshot = upscale_image(prev_screenshot)   # Downscale image
+        left, top, width, height = self.capture_area
+        monitor_index = self.monitor_combo.currentData()
+        with mss() as sct:
+            monitor_geometry = sct.monitors[monitor_index]
+            left_offset, top_offset = monitor_geometry['left'], monitor_geometry['top']
+        monitor = {'left': left + left_offset, 'top': top + top_offset, 'width': width, 'height': height}
+
+        prev_screenshot = capture_screenshot(monitor,monitor_index).convert("L") 
+        prev_screenshot = upscale_image(prev_screenshot)
 
         while self.capturing:
-            time.sleep(5)
-            new_screenshot = capture_screenshot(monitor).convert("L")  # Convert to grayscale
-            new_screenshot = upscale_image(new_screenshot)    # Downscale image
+            time.sleep(3)
+            new_screenshot = capture_screenshot(monitor,monitor_index).convert("L") 
+            new_screenshot = upscale_image(new_screenshot)  
 
             if has_changed(prev_screenshot, new_screenshot):
                 prev_screenshot = new_screenshot
@@ -313,12 +336,11 @@ class MainWindow(QMainWindow):
                 self.screenshot_queue.put((new_screenshot, language_code))
 
 
-
     def update_ocr_result(self, text):
         cleaned_text = self.text_processor.process_text(text)
-        #language_to = self.language_to_combo.currentData()
-        #translated_text = self.text_processor.translate_text(cleaned_text, target_language=language_to)
-        self.label.setText("OCR Result:\n\n" + cleaned_text)
+        language_to = self.language_to_combo.currentData()
+        translated_text = self.text_processor.translate_text(cleaned_text, target_language=language_to)
+        self.label.setText("OCR Result:\n\n" + translated_text)
 
 
 if __name__ == "__main__":
