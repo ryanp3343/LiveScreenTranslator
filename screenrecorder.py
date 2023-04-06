@@ -5,7 +5,8 @@ from io import BytesIO
 from queue import Queue
 from mss import mss
 from PIL import Image, ImageChops
-from PyQt5.QtGui import QPixmap, QIcon
+from PyQt5.QtCore import Qt, QRect
+from PyQt5.QtGui import QPixmap, QIcon, QPainter, QColor
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QVBoxLayout, QPushButton, QWidget, QComboBox,QHBoxLayout
 from ocr_worker import OCRWorker, upscale_image
 from languages_ocr import LANGUAGES_OCR
@@ -19,7 +20,7 @@ def has_changed(prev_screenshot, new_screenshot, threshold=5):
     max_diff = extrema[1] if isinstance(extrema[0], int) else extrema[0][1]
     return diff.getbbox() is not None and max_diff > threshold
 
-def capture_screenshot(monitor, monitor_index):
+def capture_screenshot(monitor, monitor_index,exclude_window=None):
     with mss() as sct:
         monitor_geometry = sct.monitors[monitor_index]
         left = monitor["left"] + monitor_geometry["left"]
@@ -33,10 +34,55 @@ def capture_screenshot(monitor, monitor_index):
         bottom = min(top + height, monitor_geometry["top"] + monitor_geometry["height"])
 
         bbox = (left, top, right, bottom)
+        if exclude_window:
+            hwnd = exclude_window.winId()
+            sct.exclude.add(hwnd)
         screenshot = sct.grab(bbox)
         img = Image.frombytes("RGB", (screenshot.width, screenshot.height), screenshot.rgb)
         return img
 
+class TranslatedTextWindow(QWidget):
+    def __init__(self, parent, monitor_geometry, capture_area, text):
+        super().__init__(parent)
+        self.monitor_geometry = monitor_geometry
+        self.capture_area = capture_area
+        self.text = text
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Dialog)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setAttribute(Qt.WA_NoSystemBackground)
+
+        self.setGeometry(
+            monitor_geometry['left'] + capture_area[0],
+            monitor_geometry['top'] + capture_area[1],
+            capture_area[2],
+            capture_area[3]
+        )
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setPen(QColor(255, 255, 255))
+        painter.setBrush(QColor(0, 0, 0, 100))
+        painter.drawRect(self.rect())
+
+        font = painter.font()
+        font.setPointSize(12)
+        painter.setFont(font)
+        bounding_rect = QRect(0, 0, self.width(), self.height())
+        painter.drawText(bounding_rect, Qt.TextWordWrap, self.text)
+
+        # Calculate the size of the text and resize the window
+        text_rect = painter.boundingRect(bounding_rect, Qt.TextWordWrap, self.text)
+
+        # Add a minimum size to the window
+        min_width, min_height = 50, 20
+        new_width = max(text_rect.width(), min_width)
+        new_height = max(text_rect.height(), min_height)
+        self.resize(new_width, new_height)
+
+    def update_text(self, new_text):
+        self.text = new_text
+        self.update()
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -45,6 +91,7 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(QIcon('icon.ico'))
         self.capture_area = None
         self.monitor_index = None
+        self.translated_text_window = None
         self.initUI()
 
         self.screenshot_queue = Queue()
@@ -151,7 +198,7 @@ class MainWindow(QMainWindow):
 
             screenshot = sct.grab(monitor)
             image = Image.frombytes("RGB", screenshot.size, screenshot.rgb)
-            image = image.resize((640, 400), Image.ANTIALIAS)
+            image = image.resize((640, 400), Image.Resampling.LANCZOS)
             buffer = BytesIO()
             image.save(buffer, format="PNG")
             pixmap = QPixmap()
@@ -200,25 +247,55 @@ class MainWindow(QMainWindow):
             left_offset, top_offset = monitor_geometry['left'], monitor_geometry['top']
         monitor = {'left': left + left_offset, 'top': top + top_offset, 'width': width, 'height': height}
 
-        prev_screenshot = capture_screenshot(monitor,monitor_index).convert("L") 
+        prev_screenshot = capture_screenshot(monitor,monitor_index,exclude_window=self.translated_text_window).convert("L") 
         prev_screenshot = upscale_image(prev_screenshot)
 
         while self.capturing:
             time.sleep(3)
             new_screenshot = capture_screenshot(monitor,monitor_index).convert("L") 
             new_screenshot = upscale_image(new_screenshot)  
-
             if has_changed(prev_screenshot, new_screenshot):
                 prev_screenshot = new_screenshot
                 new_screenshot.save("sample_screenshot.png")
                 language_code = self.language_from_combo.currentData()
                 self.screenshot_queue.put((new_screenshot, language_code))
 
+    # def update_ocr_result(self, text):
+    #     cleaned_text = self.text_processor.process_text(text)
+    #     language_to = self.language_to_combo.currentData()
+    #     translated_text = self.text_processor.translate_text(cleaned_text, target_language=language_to)
+    #     print(translated_text)
+
+    #     monitor_index = self.monitor_combo.currentData()
+    #     with mss() as sct:
+    #         monitor_geometry = sct.monitors[monitor_index]
+
+    #     if hasattr(self, 'translated_text_window') and self.translated_text_window is not None:
+    #         self.translated_text_window.update_text(translated_text)
+    #     else:
+    #         self.translated_text_window = TranslatedTextWindow(self, monitor_geometry, self.capture_area, translated_text)
+    #         self.translated_text_window.show()
     def update_ocr_result(self, text):
         cleaned_text = self.text_processor.process_text(text)
         language_to = self.language_to_combo.currentData()
         translated_text = self.text_processor.translate_text(cleaned_text, target_language=language_to)
-        self.label.setText("OCR Result:\n\n" + translated_text)
+
+        # Check if the translated text has changed
+        if not hasattr(self, 'previous_translated_text') or self.previous_translated_text != translated_text:
+            self.previous_translated_text = translated_text
+
+            if hasattr(self, 'translated_text_window'):
+                self.translated_text_window.update_text(translated_text)
+
+            monitor_index = self.monitor_combo.currentData()
+            with mss() as sct:
+                monitor_geometry = sct.monitors[monitor_index]
+
+            self.translated_text_window = TranslatedTextWindow(self, monitor_geometry, self.capture_area, translated_text)
+            self.translated_text_window.show()
+
+
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
