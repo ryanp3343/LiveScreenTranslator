@@ -1,71 +1,23 @@
 import sys
 import time
 import threading
+from io import BytesIO
 from queue import Queue
 from mss import mss
-from PIL import Image, ImageChops, ImageOps, ImageFilter
-import pytesseract
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QVBoxLayout, QPushButton, QWidget, QComboBox,QHBoxLayout, QDesktopWidget
-from PyQt5.QtCore import QThread, pyqtSignal, Qt, QPoint, QRect
-from textprocessor import TextProcessor
-from PyQt5.QtGui import QPixmap, QPainter, QPen, QColor
-from io import BytesIO
+from PIL import Image, ImageChops
+from PyQt5.QtGui import QPixmap, QIcon
+from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QVBoxLayout, QPushButton, QWidget, QComboBox,QHBoxLayout
+from ocr_worker import OCRWorker, upscale_image
 from languages_ocr import LANGUAGES_OCR
 from languages_google import LANGUAGES_GOOGLE
-import cv2
-import numpy as np
-from skimage.transform import rotate
-from skimage import io
-
-def adaptive_thresholding(image):
-    gray_image = image.convert("L")
-    return gray_image.point(lambda x: 0 if x < 128 else 255, '1')
-
-def increase_contrast(image, alpha=1.5, beta=20):
-    new_image = np.zeros(image.shape, image.dtype)
-    new_image = cv2.convertScaleAbs(image, alpha=alpha, beta=beta)
-    return new_image
-
-def apply_gaussian_blur(image, kernel_size=(5, 5)):
-    blurred_image = cv2.GaussianBlur(image, kernel_size, 0)
-    return blurred_image
-
-def deskew_image(image):
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-    coords = np.column_stack(np.where(thresh > 0))
-    angle = cv2.minAreaRect(coords)[-1]
-    
-    if angle < -45:
-        angle = -(90 + angle)
-    else:
-        angle = -angle
-
-    (h, w) = image.shape[:2]
-    center = (w // 2, h // 2)
-    M = cv2.getRotationMatrix2D(center, angle, 1.0)
-    deskewed_image = cv2.warpAffine(image, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
-    
-    return deskewed_image
-
-def ocr_screenshot(image, language_code):
-    pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-    config = f'-l {language_code} --psm 3 --oem 1'
-    return pytesseract.image_to_string(image, config=config)
+from textprocessor import TextProcessor
+from transparent_window import TransparentWindow
 
 def has_changed(prev_screenshot, new_screenshot, threshold=5):
     diff = ImageChops.difference(prev_screenshot, new_screenshot)
     extrema = diff.getextrema()
     max_diff = extrema[1] if isinstance(extrema[0], int) else extrema[0][1]
     return diff.getbbox() is not None and max_diff > threshold
-
-def upscale_image(image, scale_factor=2.0):
-    width, height = image.size
-    new_width, new_height = int(width * scale_factor), int(height * scale_factor)
-    return image.resize((new_width, new_height), Image.ANTIALIAS)
-
-def binarize_image(image, block_size=15, offset=5):
-    return image.filter(ImageFilter.UnsharpMask).convert('1', dither=Image.NONE)
 
 def capture_screenshot(monitor, monitor_index):
     with mss() as sct:
@@ -86,85 +38,11 @@ def capture_screenshot(monitor, monitor_index):
         return img
 
 
-
-
-def downscale_image(image, scale_factor=0.5):
-    width, height = image.size
-    new_width, new_height = int(width * scale_factor), int(height * scale_factor)
-    return image.resize((new_width, new_height), Image.ANTIALIAS)
-
-class OCRWorker(QThread):
-    ocr_result = pyqtSignal(str)
-
-    def __init__(self, screenshot_queue,language_combo):
-        super(OCRWorker, self).__init__()
-        self.screenshot_queue = screenshot_queue
-        self.language_combo = language_combo
-
-    def run(self):
-        while True:
-            screenshot, language_code = self.screenshot_queue.get()
-            screenshot = upscale_image(screenshot)
-            screenshot = adaptive_thresholding(screenshot)
-            text = ocr_screenshot(screenshot, language_code)
-            self.ocr_result.emit(text)
-
-class TransparentWindow(QWidget):
-    def __init__(self, main_window, monitor_index):
-        super().__init__()
-        self.main_window = main_window
-        self.monitor_index = monitor_index
-        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Dialog)
-        self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setAttribute(Qt.WA_NoSystemBackground)
-        desktop = QDesktopWidget()
-        monitor_geometry = desktop.screenGeometry(monitor_index)
-        self.setGeometry(monitor_geometry)
-
-        with mss() as sct:
-            monitor = sct.monitors[self.monitor_index]
-            x, y, width, height = monitor["left"], monitor["top"], monitor["width"] - 1, monitor["height"] - 1
-            self.setGeometry(x, y, width, height)
-
-        self.start_point = None
-        self.end_point = None
-        self.selection_rect = None
-        self.pen = QPen(Qt.red)
-        self.pen.setWidth(2)
-
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-        painter.setBrush(QColor(0, 0, 0, 100))
-        painter.drawRect(self.rect())
-
-        if self.start_point and self.end_point:
-            rect = QRect(self.start_point, self.end_point)
-            rect = rect.normalized()
-
-            painter.setPen(self.pen)
-            painter.drawRect(rect)
-
-    def mousePressEvent(self, event):
-        self.start_point = event.pos()
-        self.end_point = event.pos()
-        self.update()
-
-    def mouseMoveEvent(self, event):
-        self.end_point = event.pos()
-        self.update()
-
-    def mouseReleaseEvent(self, event):
-        self.end_point = event.pos()
-        self.main_window.update_capture_area(self.start_point, self.end_point, self.geometry())
-        self.close()
-
-
-
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
+        self.setWindowIcon(QIcon('icon.ico'))
         self.capture_area = None
         self.monitor_index = None
         self.initUI()
@@ -226,6 +104,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("LiveScreen Translator")
         self.setGeometry(100, 100, 600, 400)
         self.show()
+        self.setWindowIcon(QIcon('icon.ico'))
 
         self.populate_monitor_combo()
         self.monitor_combo.currentIndexChanged.connect(self.update_monitor_preview)
@@ -335,15 +214,15 @@ class MainWindow(QMainWindow):
                 language_code = self.language_from_combo.currentData()
                 self.screenshot_queue.put((new_screenshot, language_code))
 
-
     def update_ocr_result(self, text):
         cleaned_text = self.text_processor.process_text(text)
         language_to = self.language_to_combo.currentData()
         translated_text = self.text_processor.translate_text(cleaned_text, target_language=language_to)
         self.label.setText("OCR Result:\n\n" + translated_text)
 
-
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    app.setWindowIcon(QIcon('icon.ico'))
     main_window = MainWindow()
+    main_window.show()
     sys.exit(app.exec_())
