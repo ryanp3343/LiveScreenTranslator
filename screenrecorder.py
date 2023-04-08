@@ -99,8 +99,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setWindowIcon(QIcon('icon.ico'))
-
+        self.setWindowIcon(QIcon('img/icon.ico'))
         self.capture_area = None
         self.monitor_index = None
         self.translated_text_window = None
@@ -138,32 +137,27 @@ class MainWindow(QMainWindow):
         central_widget.setLayout(layout)
         self.setCentralWidget(central_widget)
 
-        # Create custom title bar
         title_bar = QWidget()
         title_bar_layout = QHBoxLayout()
         title_bar.setLayout(title_bar_layout)
 
         icon = QLabel()
-        icon.setPixmap(QIcon('icon.ico').pixmap(36,36))
+        icon.setPixmap(QIcon('img/icon.ico').pixmap(36,36))
         
-        # Create a centered label
         centered_label = QLabel("LiveScreen Translator")
         centered_label.setAlignment(Qt.AlignCenter)
         centered_label.setStyleSheet("font-size: 16px; font-family: Tahoma; color: white;")
 
         min_button = QToolButton()
-        min_button.setIcon(QIcon('minimize-sign.ico'))
+        min_button.setIcon(QIcon('img/minimize-sign.ico'))
         min_button.clicked.connect(self.showMinimized)
         min_button.setStyleSheet("background-color: rgb(64, 64, 64);")
 
         close_button = QToolButton()
-        close_button.setIcon(QIcon('close.ico'))
+        close_button.setIcon(QIcon('img/close.ico'))
         close_button.clicked.connect(self.close)
         close_button.setStyleSheet("background-color: rgb(64, 64, 64);")
 
-        
-
-        # Add the widgets and stretch the layout to center the centered_label
         title_bar_layout.addWidget(icon)
         title_bar_layout.addStretch(1)
         title_bar_layout.addWidget(centered_label)
@@ -219,7 +213,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("LiveScreen Translator")
         self.setGeometry(100, 100, 600, 400)
         self.show()
-        self.setWindowIcon(QIcon('icon.ico'))
+        self.setWindowIcon(QIcon('img/icon.ico'))
 
         self.populate_monitor_combo()
         self.monitor_combo.currentIndexChanged.connect(self.update_monitor_preview)
@@ -344,7 +338,7 @@ class MainWindow(QMainWindow):
         SWP_NOZORDER = 0x0004
 
         while self.capturing:
-            time.sleep(1)
+            time.sleep(3)
 
             exclude_hwnd = None
             if self.translated_text_window:
@@ -385,7 +379,7 @@ class MainWindow(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    app.setWindowIcon(QIcon('icon.ico'))
+    app.setWindowIcon(QIcon('img/icon.ico'))
     main_window = MainWindow()
     main_window.show()
     sys.exit(app.exec_())

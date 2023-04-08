@@ -1,3 +1,5 @@
+#language codes for py tesseract
+
 LANGUAGES_OCR = [
     ('Afrikaans', 'afr'),
     ('Albanian', 'sqi'),
