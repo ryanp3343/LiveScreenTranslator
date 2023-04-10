@@ -56,7 +56,7 @@ def capture_screenshot(monitor, monitor_index, exclude_hwnd=None):
 def upscale_image(image, scale_factor=2.0):
     width, height = image.size
     new_width, new_height = int(width * scale_factor), int(height * scale_factor)
-    return image.resize((new_width, new_height), Image.ANTIALIAS)
+    return image.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -269,6 +269,11 @@ class MainWindow(QMainWindow):
             self.language_to_label.show()
             self.language_to_combo.show()
             self.monitor_label.setText("Select monitor:")
+
+            if self.translated_text_window: 
+                self.translated_text_window.close()
+                self.translated_text_window = None
+                
         else:
             self.capture_button.setText("Stop Capturing")
             self.capturing = True
