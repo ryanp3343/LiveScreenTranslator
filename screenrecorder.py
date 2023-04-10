@@ -1,20 +1,20 @@
 import sys
 import time
+import win32gui
 import threading
 from io import BytesIO
 from queue import Queue
 from mss import mss
 from PIL import Image, ImageChops
-from PyQt5.QtCore import Qt, QRect, QPoint
-from PyQt5.QtGui import QPixmap, QIcon, QPainter, QColor
+from PyQt5.QtCore import Qt, QPoint
+from PyQt5.QtGui import QPixmap, QIcon
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QVBoxLayout, QPushButton, QWidget, QComboBox,QHBoxLayout, QToolButton
 from ocr_worker import OCRWorker, upscale_image
 from languages_ocr import LANGUAGES_OCR
 from languages_google import LANGUAGES_GOOGLE
-from textprocessor import TextProcessor
+from text_processor import TextProcessor
 from transparent_window import TransparentWindow
-import ctypes
-import win32gui
+from translated_window import TranslatedTextWindow
 
 def has_changed(prev_screenshot, new_screenshot, threshold=5):
     diff = ImageChops.difference(prev_screenshot, new_screenshot)
@@ -38,62 +38,20 @@ def capture_screenshot(monitor, monitor_index, exclude_hwnd=None):
         bbox = (left, top, right, bottom)
         screenshot = sct.grab(bbox)
 
+        img = Image.frombytes("RGB", (screenshot.width, screenshot.height), screenshot.rgb)
+
         if exclude_hwnd:
             hwnd_left, hwnd_top, hwnd_right, hwnd_bottom = win32gui.GetWindowRect(exclude_hwnd)
-            hwnd_img = Image.new("RGB", (hwnd_right - hwnd_left, hwnd_bottom - hwnd_top), (0, 0, 0))
+            hwnd_width = hwnd_right - hwnd_left
+            hwnd_height = hwnd_bottom - hwnd_top
 
             if hwnd_left < right and hwnd_right > left and hwnd_top < bottom and hwnd_bottom > top:
-                img = Image.frombytes("RGB", (screenshot.width, screenshot.height), screenshot.rgb)
-                img.paste(hwnd_img, (hwnd_left - left, hwnd_top - top))
-                return img
+                hwnd_img = img.crop((hwnd_left - left, hwnd_top - top, hwnd_left - left + hwnd_width, hwnd_top - top + hwnd_height))
+                transparent_hwnd_img = hwnd_img.copy()
+                transparent_hwnd_img.putalpha(0)
+                img.paste(transparent_hwnd_img, (hwnd_left - left, hwnd_top - top))
 
-        img = Image.frombytes("RGB", (screenshot.width, screenshot.height), screenshot.rgb)
         return img
-
-
-
-class TranslatedTextWindow(QWidget):
-    def __init__(self, parent, monitor_geometry, capture_area, text):
-        super().__init__(parent)
-        self.monitor_geometry = monitor_geometry
-        self.capture_area = capture_area
-        self.text = text
-        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Dialog)
-        self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setAttribute(Qt.WA_NoSystemBackground)
-
-        self.setGeometry(
-            monitor_geometry['left'] + capture_area[0],
-            monitor_geometry['top'] + capture_area[1],
-            capture_area[2],
-            capture_area[3]
-        )
-
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-        painter.setPen(QColor(255, 255, 255))
-        painter.setBrush(QColor(0, 0, 0, 100))
-        painter.drawRect(self.rect())
-
-        font = painter.font()
-        font.setPointSize(12)
-        painter.setFont(font)
-        bounding_rect = QRect(0, 0, self.width(), self.height())
-        painter.drawText(bounding_rect, Qt.TextWordWrap, self.text)
-
-        text_rect = painter.boundingRect(bounding_rect, Qt.TextWordWrap, self.text)
-
-        min_width, min_height = 50, 20
-        new_width = max(text_rect.width(), min_width)
-        new_height = max(text_rect.height(), min_height)
-        self.resize(new_width, new_height)
-
-    def update_text(self, new_text):
-        self.text = new_text
-        self.update()
-
-
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -330,35 +288,37 @@ class MainWindow(QMainWindow):
 
         prev_screenshot = capture_screenshot(monitor, monitor_index).convert("L")
         prev_screenshot = upscale_image(prev_screenshot)
-
         HWND_BOTTOM = 1
+        HWND_TOPMOST = -1
         SWP_NOSIZE = 0x0001
         SWP_NOMOVE = 0x0002
         SWP_NOACTIVATE = 0x0010
-        SWP_NOZORDER = 0x0004
 
+        hwnd = None
         while self.capturing:
             time.sleep(3)
 
-            exclude_hwnd = None
             if self.translated_text_window:
-                exclude_hwnd = self.translated_text_window.winId()
-                hwnd = win32gui.FindWindow(None, str(exclude_hwnd))
-                ctypes.windll.user32.SetWindowPos(hwnd, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE)
+                hwnd = self.translated_text_window.winId()
 
-            new_screenshot = capture_screenshot(monitor, monitor_index, exclude_hwnd=exclude_hwnd).convert("L")
+                if hwnd:
+                    # Lower the Z-order of the translated text window
+                    win32gui.SetWindowPos(hwnd, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE)
+                    time.sleep(0.2)  # Give some time for the window to be placed at the bottom
+
+            new_screenshot = capture_screenshot(monitor, monitor_index, exclude_hwnd=hwnd).convert("L")
             new_screenshot = upscale_image(new_screenshot)
 
-            if self.translated_text_window:
-                qwindow_id = self.translated_text_window.winId()
-                hwnd = win32gui.FindWindow(None, str(qwindow_id))
-                ctypes.windll.user32.SetWindowPos(hwnd, 0, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOZORDER)
-
+            if hwnd:
+                # Restore the Z-order of the translated text window
+                win32gui.SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE)
+                time.sleep(0.2)  # Give some time for the window to be placed at the top
             if has_changed(prev_screenshot, new_screenshot):
                 prev_screenshot = new_screenshot
                 new_screenshot.save("sample_screenshot.png")
                 language_code = self.language_from_combo.currentData()
                 self.screenshot_queue.put((new_screenshot, language_code))
+        
 
     def update_ocr_result(self, text):
         cleaned_text = self.text_processor.process_text(text)
@@ -374,8 +334,6 @@ class MainWindow(QMainWindow):
 
         self.translated_text_window = TranslatedTextWindow(self, monitor_geometry, self.capture_area, translated_text)
         self.translated_text_window.show()
-
-
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
