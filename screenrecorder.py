@@ -9,12 +9,12 @@ from PIL import Image, ImageChops
 from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtGui import QPixmap, QIcon
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QVBoxLayout, QPushButton, QWidget, QComboBox,QHBoxLayout, QToolButton
-from ocr_worker import OCRWorker, upscale_image
-from languages_ocr import LANGUAGES_OCR
-from languages_google import LANGUAGES_GOOGLE
-from text_processor import TextProcessor
-from transparent_window import TransparentWindow
-from translated_window import TranslatedTextWindow
+from constants.languages_ocr import LANGUAGES_OCR
+from constants.languages_google import LANGUAGES_GOOGLE
+from components.ocr_worker import OCRWorker
+from components.text_processor import TextProcessor
+from components.transparent_window import TransparentWindow
+from components.translated_window import TranslatedTextWindow
 
 def has_changed(prev_screenshot, new_screenshot, threshold=5):
     diff = ImageChops.difference(prev_screenshot, new_screenshot)
@@ -52,12 +52,17 @@ def capture_screenshot(monitor, monitor_index, exclude_hwnd=None):
                 img.paste(transparent_hwnd_img, (hwnd_left - left, hwnd_top - top))
 
         return img
+    
+def upscale_image(image, scale_factor=2.0):
+    width, height = image.size
+    new_width, new_height = int(width * scale_factor), int(height * scale_factor)
+    return image.resize((new_width, new_height), Image.ANTIALIAS)
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setWindowIcon(QIcon('img/icon.ico'))
+        self.setWindowIcon(QIcon('resources/img/icon.ico'))
         self.capture_area = None
         self.monitor_index = None
         self.translated_text_window = None
@@ -72,6 +77,9 @@ class MainWindow(QMainWindow):
         self.setWindowFlags(Qt.FramelessWindowHint)
         self.mousePressed = False
         self.mousePos = QPoint()
+        with open('resources/styles/styles.qss','r') as f:
+            stylesheet = f.read()
+        self.setStyleSheet(stylesheet)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
@@ -91,6 +99,7 @@ class MainWindow(QMainWindow):
 
     def initUI(self):
         central_widget = QWidget()
+        central_widget.setObjectName("central_widget")
         layout = QVBoxLayout()
         central_widget.setLayout(layout)
         self.setCentralWidget(central_widget)
@@ -100,21 +109,21 @@ class MainWindow(QMainWindow):
         title_bar.setLayout(title_bar_layout)
 
         icon = QLabel()
-        icon.setPixmap(QIcon('img/icon.ico').pixmap(36,36))
+        icon.setPixmap(QIcon('resources/img/icon.ico').pixmap(36,36))
         
         centered_label = QLabel("LiveScreen Translator")
+        centered_label.setObjectName("center_label")
         centered_label.setAlignment(Qt.AlignCenter)
-        centered_label.setStyleSheet("font-size: 16px; font-family: Tahoma; color: white;")
 
         min_button = QToolButton()
-        min_button.setIcon(QIcon('img/minimize-sign.ico'))
+        min_button.setObjectName("min_button")
+        min_button.setIcon(QIcon('resources/img/minimize-sign.ico'))
         min_button.clicked.connect(self.showMinimized)
-        min_button.setStyleSheet("background-color: rgb(64, 64, 64);")
 
         close_button = QToolButton()
-        close_button.setIcon(QIcon('img/close.ico'))
+        close_button.setObjectName("close_button")
+        close_button.setIcon(QIcon('resources/img/close.ico'))
         close_button.clicked.connect(self.close)
-        close_button.setStyleSheet("background-color: rgb(64, 64, 64);")
 
         title_bar_layout.addWidget(icon)
         title_bar_layout.addStretch(1)
@@ -129,12 +138,16 @@ class MainWindow(QMainWindow):
         top_layout = QHBoxLayout()
 
         self.language_from_label = QLabel("Translate From:")
+        self.language_from_label.setObjectName("language_from_label")
         self.language_from_combo = QComboBox()
+        self.language_from_combo.setObjectName("language_from_combo")
         top_layout.addWidget(self.language_from_label)
         top_layout.addWidget(self.language_from_combo)
 
         self.language_to_label = QLabel("Translate To:")
+        self.language_to_label.setObjectName("language_to_label")
         self.language_to_combo = QComboBox()
+        self.language_to_combo.setObjectName("language_to_combo")
         top_layout.addWidget(self.language_to_label)
         top_layout.addWidget(self.language_to_combo)
 
@@ -145,24 +158,31 @@ class MainWindow(QMainWindow):
 
         monitor_selection_layout = QHBoxLayout()
         self.monitor_label = QLabel("Select monitor:")
+        self.monitor_label.setObjectName("monitor_label")
         self.monitor_combo = QComboBox()
+        self.monitor_combo.setObjectName("monitor_combo")
         monitor_selection_layout.addWidget(self.monitor_label)
         monitor_selection_layout.addWidget(self.monitor_combo)
         layout.addLayout(monitor_selection_layout)
 
         self.monitor_info_label = QLabel("Monitor info:")
+        self.monitor_info_label.setObjectName("monitor_info_label")
         layout.addWidget(self.monitor_info_label)
 
         self.preview_label = QLabel("Monitor Preview:")
+        self.preview_label.setObjectName("preview_label")
         layout.addWidget(self.preview_label)
 
         buttons_layout = QHBoxLayout()
 
         self.select_area_button = QPushButton("Select Area")
+        self.select_area_button.setObjectName("select_area_button")
         self.select_area_button.clicked.connect(self.show_transparent_window)
         buttons_layout.addWidget(self.select_area_button)
 
         self.capture_button = QPushButton("Start Capturing")
+        self.capture_button.setObjectName("capture_button")
+        self.capture_button.setDisabled(True)
         self.capture_button.clicked.connect(self.toggle_capturing)
         buttons_layout.addWidget(self.capture_button)
 
@@ -171,32 +191,22 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("LiveScreen Translator")
         self.setGeometry(100, 100, 600, 400)
         self.show()
-        self.setWindowIcon(QIcon('img/icon.ico'))
+        self.setWindowIcon(QIcon('resources/img/icon.ico'))
 
         self.populate_monitor_combo()
         self.monitor_combo.currentIndexChanged.connect(self.update_monitor_preview)
 
         self.capturing = False
         self.capture_thread = None
-        central_widget.setStyleSheet("background-color: rgb(0,0,0);")
-        self.select_area_button.setStyleSheet("background-color: rgb(64, 64, 64); color: white;font-size: 16px; ")
-        self.language_from_label.setStyleSheet("font-size: 16px; color: rgb(64, 64, 64); color: white")
-        self.language_to_label.setStyleSheet("font-size: 16px; color: rgb(64, 64, 64); color: white")
-        self.language_from_combo.setStyleSheet("background-color: rgb(64, 64, 64); font-size: 16px; color: white;")
-        self.language_to_combo.setStyleSheet("background-color: rgb(64, 64, 64);font-size: 16px;  color: white;")
-        self.preview_label.setStyleSheet("background-color: rgb(64, 64, 64);font-size: 16px; color: white;")
-        self.preview_label.setStyleSheet("background-color: rgb(64, 64, 64);font-size: 16px;  color: white;")
-        self.monitor_info_label.setStyleSheet("color: white;font-size: 16px; ")
-        self.monitor_label.setStyleSheet("color: white;font-size: 16px; ")
-        self.monitor_combo.setStyleSheet("background-color: rgb(64, 64, 64);font-size: 16px;  color: white;")
-        self.capture_button.setStyleSheet("background-color: rgb(64, 64, 64);font-size: 16px;  color: white;")
-
+        
     def toggleMaximizeRestore(self):
         if self.isMaximized():
             self.showNormal()
         else:
             self.showMaximized()
-        
+
+    def enable_capture_button(self):
+        self.capture_button.setDisabled(False)
 
     def update_capture_area(self, start, end, geometry):
         monitor_geometry = self.monitor_combo.currentData()
@@ -206,6 +216,8 @@ class MainWindow(QMainWindow):
 
         self.capture_area = (start.x() - left_offset, start.y() - top_offset, end.x() - start.x(), end.y() - start.y())
         self.capture_geometry = geometry
+        self.capture_geometry = geometry
+        self.enable_capture_button()
 
 
     def show_transparent_window(self):
@@ -337,7 +349,7 @@ class MainWindow(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    app.setWindowIcon(QIcon('img/icon.ico'))
+    app.setWindowIcon(QIcon('resources/img/icon.ico'))
     main_window = MainWindow()
     main_window.show()
     sys.exit(app.exec_())
