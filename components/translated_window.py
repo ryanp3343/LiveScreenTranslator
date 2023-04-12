@@ -25,7 +25,7 @@ class TranslatedTextWindow(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
         painter.setPen(QColor(255, 255, 255))
-        painter.setBrush(QColor(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255), 200))  # Increase the last value for less transparency (0-255)
+        painter.setBrush(QColor(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255), 230))  # Increase the last value for less transparency (0-255)
         painter.drawRect(self.rect())
 
         font = painter.font()

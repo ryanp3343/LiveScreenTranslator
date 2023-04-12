@@ -8,7 +8,7 @@ from mss import mss
 from PIL import Image, ImageChops
 from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtGui import QPixmap, QIcon
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QVBoxLayout, QPushButton, QWidget, QComboBox,QHBoxLayout, QToolButton
+from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QVBoxLayout, QPushButton, QWidget, QComboBox,QHBoxLayout, QToolButton, QCheckBox, QFileDialog
 from constants.languages_ocr import LANGUAGES_OCR
 from constants.languages_google import LANGUAGES_GOOGLE
 from components.ocr_worker import OCRWorker
@@ -66,6 +66,8 @@ class MainWindow(QMainWindow):
         self.capture_area = None
         self.monitor_index = None
         self.translated_text_window = None
+        self.save_translated_text = False
+        self.save_destination = ""
         self.initUI()
 
         self.screenshot_queue = Queue()
@@ -133,7 +135,7 @@ class MainWindow(QMainWindow):
         title_bar_layout.addWidget(close_button)
 
         layout.addWidget(title_bar)
-
+        layout.addStretch(100) 
 
         top_layout = QHBoxLayout()
 
@@ -165,9 +167,27 @@ class MainWindow(QMainWindow):
         monitor_selection_layout.addWidget(self.monitor_combo)
         layout.addLayout(monitor_selection_layout)
 
+
+        monitor_info_layout = QHBoxLayout()
         self.monitor_info_label = QLabel("Monitor info:")
         self.monitor_info_label.setObjectName("monitor_info_label")
-        layout.addWidget(self.monitor_info_label)
+        monitor_info_layout.addWidget(self.monitor_info_label)
+
+        save_text_layout = QHBoxLayout()  
+        self.save_text_label = QLabel("Save text to file:")
+        self.save_text_label.setObjectName("save_to_file")
+        save_text_layout.addWidget(self.save_text_label)
+
+        self.save_checkbox = QCheckBox("Select Destination")
+        self.save_checkbox.stateChanged.connect(self.select_save_destination)
+        save_text_layout.addWidget(self.save_checkbox)
+
+        monitor_info_layout.addLayout(save_text_layout) 
+
+        monitor_info_layout.setStretch(0, 2)  
+        monitor_info_layout.setStretch(2, 1)  
+
+        layout.addLayout(monitor_info_layout)
 
         self.preview_label = QLabel("Monitor Preview:")
         self.preview_label.setObjectName("preview_label")
@@ -187,6 +207,7 @@ class MainWindow(QMainWindow):
         buttons_layout.addWidget(self.capture_button)
 
         layout.addLayout(buttons_layout)
+        layout.addStretch(1)
 
         self.setWindowTitle("LiveScreen Translator")
         self.setGeometry(100, 100, 600, 400)
@@ -204,6 +225,30 @@ class MainWindow(QMainWindow):
             self.showNormal()
         else:
             self.showMaximized()
+
+    def toggle_save_translated_text(self, state):
+        if state == Qt.Checked:
+            self.save_translated_text = True
+        else:
+            self.save_translated_text = False
+
+    def select_save_destination(self, state):
+        if state == Qt.Checked:
+            options = QFileDialog.Options()
+            options |= QFileDialog.DontUseNativeDialog
+            file_name, _ = QFileDialog.getSaveFileName(self, "Save Translated Text", "", "Text Files (*.txt);;All Files (*)", options=options)
+            if file_name:
+                if not file_name.endswith(".txt"):
+                    file_name += ".txt"
+                self.save_path = file_name
+        else:
+            self.save_path = None
+
+    
+    def save_translated_text_to_file(self):
+        if self.save_path and self.translated_text_window:
+            with open(self.save_path, 'a', encoding='utf-8') as f:
+                f.write(self.translated_text_window.translated_text + '\n')
 
     def enable_capture_button(self):
         self.capture_button.setDisabled(False)
@@ -260,6 +305,7 @@ class MainWindow(QMainWindow):
         if self.capturing:
             self.capture_button.setText("Start Capturing")
             self.capturing = False
+            self.capture_button.setDisabled(True)
             self.preview_label.show()
             self.monitor_label.show()
             self.monitor_combo.show()
@@ -268,12 +314,15 @@ class MainWindow(QMainWindow):
             self.language_from_combo.show()
             self.language_to_label.show()
             self.language_to_combo.show()
+            self.save_text_label.show()
+            self.save_checkbox.show()
+            self.select_area_button.show()
             self.monitor_label.setText("Select monitor:")
 
             if self.translated_text_window: 
                 self.translated_text_window.close()
                 self.translated_text_window = None
-                
+                    
         else:
             self.capture_button.setText("Stop Capturing")
             self.capturing = True
@@ -288,8 +337,11 @@ class MainWindow(QMainWindow):
             self.language_from_combo.hide()
             self.language_to_label.hide()
             self.language_to_combo.hide()
+            self.save_text_label.hide()
+            self.save_checkbox.hide()
+            self.select_area_button.hide()
 
-
+        
 
     def capture_loop(self):
         if not self.capture_area:
@@ -313,23 +365,17 @@ class MainWindow(QMainWindow):
 
         hwnd = None
         while self.capturing:
-            time.sleep(3)
-
+            time.sleep(2)
             if self.translated_text_window:
                 hwnd = self.translated_text_window.winId()
-
                 if hwnd:
-                    # Lower the Z-order of the translated text window
                     win32gui.SetWindowPos(hwnd, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE)
-                    time.sleep(0.2)  # Give some time for the window to be placed at the bottom
-
+                    time.sleep(0.2)
             new_screenshot = capture_screenshot(monitor, monitor_index, exclude_hwnd=hwnd).convert("L")
             new_screenshot = upscale_image(new_screenshot)
-
             if hwnd:
-                # Restore the Z-order of the translated text window
                 win32gui.SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE)
-                time.sleep(0.2)  # Give some time for the window to be placed at the top
+                time.sleep(0.2) 
             if has_changed(prev_screenshot, new_screenshot):
                 prev_screenshot = new_screenshot
                 new_screenshot.save("sample_screenshot.png")
@@ -341,6 +387,11 @@ class MainWindow(QMainWindow):
         cleaned_text = self.text_processor.process_text(text)
         language_to = self.language_to_combo.currentData()
         translated_text = self.text_processor.translate_text(cleaned_text, target_language=language_to)
+        
+        if self.save_checkbox.isChecked() and self.save_path:
+            if translated_text.strip():
+                with open(self.save_path, "a", encoding='utf-8') as output_file:
+                    output_file.write(translated_text + "\n")
 
         if hasattr(self, 'translated_text_window') and self.translated_text_window is not None:
             self.translated_text_window.close()

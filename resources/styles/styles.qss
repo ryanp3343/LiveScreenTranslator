@@ -78,3 +78,9 @@ QPushButton#capture_button:disabled {
     font-size: 16px;  
     color: rgb(180, 180, 180);
 }
+
+QLabel#save_to_file {
+    color: white;
+    font-size: 16px; 
+}
+
