@@ -6,9 +6,9 @@ from io import BytesIO
 from queue import Queue
 from mss import mss
 from PIL import Image, ImageChops
-from PyQt5.QtCore import Qt, QPoint
+from PyQt5.QtCore import Qt, QPoint,QRect
 from PyQt5.QtGui import QPixmap, QIcon
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QVBoxLayout, QPushButton, QWidget, QComboBox,QHBoxLayout, QToolButton, QCheckBox, QFileDialog
+from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QVBoxLayout, QPushButton, QWidget, QComboBox,QHBoxLayout, QToolButton, QCheckBox, QFileDialog, QDesktopWidget
 from constants.languages_ocr import LANGUAGES_OCR
 from constants.languages_google import LANGUAGES_GOOGLE
 from components.ocr_worker import OCRWorker
@@ -58,12 +58,14 @@ def upscale_image(image, scale_factor=2.0):
     new_width, new_height = int(width * scale_factor), int(height * scale_factor)
     return image.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
         self.setWindowIcon(QIcon('resources/img/icon.ico'))
         self.capture_area = None
+        self.correct_capture_area= None
         self.monitor_index = None
         self.translated_text_window = None
         self.save_translated_text = False
@@ -257,11 +259,10 @@ class MainWindow(QMainWindow):
         monitor_geometry = self.monitor_combo.currentData()
         with mss() as sct:
             monitor = sct.monitors[monitor_geometry]
-            left_offset, top_offset = monitor['left'], monitor['top']
-
+            left_offset, top_offset,width ,height = monitor['left'], monitor['top'], monitor['width']-1, monitor['height']-1
+        self.correct_capture_area = (start.x() + left_offset, start.y() + top_offset, end.x() - start.x(), end.y() - start.y())
         self.capture_area = (start.x() - left_offset, start.y() - top_offset, end.x() - start.x(), end.y() - start.y())
-        self.capture_geometry = geometry
-        self.capture_geometry = geometry
+        self.capture_geometry = (left_offset, top_offset, monitor['width'], monitor['height'])
         self.enable_capture_button()
 
 
@@ -370,12 +371,12 @@ class MainWindow(QMainWindow):
                 hwnd = self.translated_text_window.winId()
                 if hwnd:
                     win32gui.SetWindowPos(hwnd, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE)
-                    time.sleep(0.2)
+                    time.sleep(0.3)
             new_screenshot = capture_screenshot(monitor, monitor_index, exclude_hwnd=hwnd).convert("L")
             new_screenshot = upscale_image(new_screenshot)
             if hwnd:
                 win32gui.SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE)
-                time.sleep(0.2) 
+                time.sleep(0.3) 
             if has_changed(prev_screenshot, new_screenshot):
                 prev_screenshot = new_screenshot
                 new_screenshot.save("sample_screenshot.png")
@@ -386,6 +387,7 @@ class MainWindow(QMainWindow):
     def update_ocr_result(self, text):
         cleaned_text = self.text_processor.process_text(text)
         language_to = self.language_to_combo.currentData()
+        monitor_index = self.monitor_combo.currentData()
         translated_text = self.text_processor.translate_text(cleaned_text, target_language=language_to)
         
         if self.save_checkbox.isChecked() and self.save_path:
@@ -396,11 +398,7 @@ class MainWindow(QMainWindow):
         if hasattr(self, 'translated_text_window') and self.translated_text_window is not None:
             self.translated_text_window.close()
 
-        monitor_index = self.monitor_combo.currentData()
-        with mss() as sct:
-            monitor_geometry = sct.monitors[monitor_index]
-
-        self.translated_text_window = TranslatedTextWindow(self, monitor_geometry, self.capture_area, translated_text)
+        self.translated_text_window = TranslatedTextWindow(self, monitor_index, self.correct_capture_area, translated_text)
         self.translated_text_window.show()
 
 if __name__ == "__main__":
@@ -409,3 +407,8 @@ if __name__ == "__main__":
     main_window = MainWindow()
     main_window.show()
     sys.exit(app.exec_())
+
+
+#not print translations if last translation if to similar 
+#add voice after 
+    
