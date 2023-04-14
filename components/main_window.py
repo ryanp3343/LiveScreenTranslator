@@ -7,7 +7,18 @@ from mss import mss
 from PIL import Image, ImageChops
 from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtGui import QPixmap, QIcon
-from PyQt5.QtWidgets import QMainWindow, QLabel, QVBoxLayout, QPushButton, QWidget, QComboBox,QHBoxLayout, QToolButton, QCheckBox, QFileDialog
+from PyQt5.QtWidgets import (
+    QMainWindow,
+    QLabel,
+    QVBoxLayout,
+    QPushButton,
+    QWidget,
+    QComboBox,
+    QHBoxLayout,
+    QToolButton,
+    QCheckBox,
+    QFileDialog,
+)
 from constants.languages_ocr import LANGUAGES_OCR
 from constants.languages_google import LANGUAGES_GOOGLE
 from components.ocr_worker import OCRWorker
@@ -16,13 +27,17 @@ from components.transparent_window import TransparentWindow
 from components.translated_window import TranslatedTextWindow
 from components.text_to_speech import TextToSpeech
 
+
 def has_changed(prev_screenshot, new_screenshot, threshold=5):
+    """takes two screennshots and compares if there different"""
     diff = ImageChops.difference(prev_screenshot, new_screenshot)
     extrema = diff.getextrema()
     max_diff = extrema[1] if isinstance(extrema[0], int) else extrema[0][1]
     return diff.getbbox() is not None and max_diff > threshold
 
+
 def capture_screenshot(monitor, monitor_index, exclude_hwnd=None):
+    """gets geometry of montior area and takes a screenshot of the bbox"""
     with mss() as sct:
         monitor_geometry = sct.monitors[monitor_index]
         left = monitor["left"] + monitor_geometry["left"]
@@ -38,29 +53,28 @@ def capture_screenshot(monitor, monitor_index, exclude_hwnd=None):
         bbox = (left, top, right, bottom)
         screenshot = sct.grab(bbox)
 
-        img = Image.frombytes("RGB", (screenshot.width, screenshot.height), screenshot.rgb)
-
-        if exclude_hwnd:
-            hwnd_left, hwnd_top, hwnd_right, hwnd_bottom = win32gui.GetWindowRect(exclude_hwnd)
-            hwnd_width = hwnd_right - hwnd_left
-            hwnd_height = hwnd_bottom - hwnd_top
-
-            if hwnd_left < right and hwnd_right > left and hwnd_top < bottom and hwnd_bottom > top:
-                hwnd_img = img.crop((hwnd_left - left, hwnd_top - top, hwnd_left - left + hwnd_width, hwnd_top - top + hwnd_height))
-                transparent_hwnd_img = hwnd_img.copy()
-                transparent_hwnd_img.putalpha(0)
-                img.paste(transparent_hwnd_img, (hwnd_left - left, hwnd_top - top))
+        img = Image.frombytes(
+            "RGB", (screenshot.width, screenshot.height), screenshot.rgb
+        )
 
         return img
 
 
 class MainWindow(QMainWindow):
+    """
+    MainWindow class all other components get used here
+    Creates a small desktop application window that lets
+    user choose translation languages,select caputre area,
+    save to file, use tts
+    """
+
     def __init__(self):
+        """inits the main window and all values, creates referecense to other classes"""
         super().__init__()
 
-        self.setWindowIcon(QIcon('resources/img/icon.ico'))
+        self.setWindowIcon(QIcon("resources/img/icon.ico"))
         self.capture_area = None
-        self.correct_capture_area= None
+        self.correct_capture_area = None
         self.monitor_index = None
         self.translated_text_window = None
         self.save_translated_text = False
@@ -78,27 +92,31 @@ class MainWindow(QMainWindow):
         self.setWindowFlags(Qt.FramelessWindowHint)
         self.mousePressed = False
         self.mousePos = QPoint()
-        with open('resources/styles/styles.qss','r') as f:
+        with open("resources/styles/styles.qss", "r") as f:
             stylesheet = f.read()
         self.setStyleSheet(stylesheet)
 
     def mousePressEvent(self, event):
+        """for the custon title bar dragging across screen"""
         if event.button() == Qt.LeftButton:
             self.mousePressed = True
             self.mousePos = event.globalPos() - self.pos()
             event.accept()
 
     def mouseMoveEvent(self, event):
+        """for the custon title bar dragging across screen"""
         if event.buttons() == Qt.LeftButton and self.mousePressed:
             self.move(event.globalPos() - self.mousePos)
             event.accept()
 
     def mouseReleaseEvent(self, event):
+        """for the custon title bar dragging across screen"""
         if event.button() == Qt.LeftButton:
             self.mousePressed = False
             event.accept()
 
     def initUI(self):
+        """creates all the user interface for the main window"""
         central_widget = QWidget()
         central_widget.setObjectName("central_widget")
         layout = QVBoxLayout()
@@ -110,20 +128,20 @@ class MainWindow(QMainWindow):
         title_bar.setLayout(title_bar_layout)
 
         icon = QLabel()
-        icon.setPixmap(QIcon('resources/img/icon.ico').pixmap(36,36))
-        
+        icon.setPixmap(QIcon("resources/img/icon.ico").pixmap(36, 36))
+
         centered_label = QLabel("LiveScreen Translator")
         centered_label.setObjectName("center_label")
         centered_label.setAlignment(Qt.AlignCenter)
 
         min_button = QToolButton()
         min_button.setObjectName("min_button")
-        min_button.setIcon(QIcon('resources/img/minimize-sign.ico'))
+        min_button.setIcon(QIcon("resources/img/minimize-sign.ico"))
         min_button.clicked.connect(self.showMinimized)
 
         close_button = QToolButton()
         close_button.setObjectName("close_button")
-        close_button.setIcon(QIcon('resources/img/close.ico'))
+        close_button.setIcon(QIcon("resources/img/close.ico"))
         close_button.clicked.connect(self.close)
 
         title_bar_layout.addWidget(icon)
@@ -134,7 +152,7 @@ class MainWindow(QMainWindow):
         title_bar_layout.addWidget(close_button)
 
         layout.addWidget(title_bar)
-        layout.addStretch(100) 
+        layout.addStretch(100)
 
         top_layout = QHBoxLayout()
 
@@ -166,7 +184,6 @@ class MainWindow(QMainWindow):
         monitor_selection_layout.addWidget(self.monitor_combo)
         layout.addLayout(monitor_selection_layout)
 
-
         monitor_info_layout = QHBoxLayout()
         self.monitor_info_label = QLabel("Monitor info:")
         self.monitor_info_label.setObjectName("monitor_info_label")
@@ -183,8 +200,7 @@ class MainWindow(QMainWindow):
 
         monitor_info_layout.addLayout(voice_layout)
 
-
-        save_text_layout = QHBoxLayout()  
+        save_text_layout = QHBoxLayout()
         self.save_text_label = QLabel("Save text to file:")
         self.save_text_label.setObjectName("save_to_file")
         save_text_layout.addWidget(self.save_text_label)
@@ -193,10 +209,10 @@ class MainWindow(QMainWindow):
         self.save_checkbox.stateChanged.connect(self.select_save_destination)
         save_text_layout.addWidget(self.save_checkbox)
 
-        monitor_info_layout.addLayout(save_text_layout) 
+        monitor_info_layout.addLayout(save_text_layout)
 
-        monitor_info_layout.setStretch(0, 2)  
-        monitor_info_layout.setStretch(2, 1)  
+        monitor_info_layout.setStretch(0, 2)
+        monitor_info_layout.setStretch(2, 1)
 
         layout.addLayout(monitor_info_layout)
 
@@ -223,31 +239,40 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("LiveScreen Translator")
         self.setGeometry(100, 100, 600, 400)
         self.show()
-        self.setWindowIcon(QIcon('resources/img/icon.ico'))
+        self.setWindowIcon(QIcon("resources/img/icon.ico"))
 
         self.populate_monitor_combo()
         self.monitor_combo.currentIndexChanged.connect(self.update_monitor_preview)
 
         self.capturing = False
         self.capture_thread = None
-        
+
     def toggleMaximizeRestore(self):
+        """minimize main window"""
         if self.isMaximized():
             self.showNormal()
         else:
             self.showMaximized()
 
     def toggle_save_translated_text(self, state):
+        """boolean if user selects save text to file"""
         if state == Qt.Checked:
             self.save_translated_text = True
         else:
             self.save_translated_text = False
 
     def select_save_destination(self, state):
+        """let user pick where they want the saved file to go"""
         if state == Qt.Checked:
             options = QFileDialog.Options()
             options |= QFileDialog.DontUseNativeDialog
-            file_name, _ = QFileDialog.getSaveFileName(self, "Save Translated Text", "", "Text Files (*.txt);;All Files (*)", options=options)
+            file_name, _ = QFileDialog.getSaveFileName(
+                self,
+                "Save Translated Text",
+                "",
+                "Text Files (*.txt);;All Files (*)",
+                options=options,
+            )
             if file_name:
                 if not file_name.endswith(".txt"):
                     file_name += ".txt"
@@ -255,16 +280,18 @@ class MainWindow(QMainWindow):
         else:
             self.save_path = None
 
-    
     def save_translated_text_to_file(self):
+        """open file and save the translated text"""
         if self.save_path and self.translated_text_window:
-            with open(self.save_path, 'a', encoding='utf-8') as f:
-                f.write(self.translated_text_window.translated_text + '\n')
+            with open(self.save_path, "a", encoding="utf-8") as f:
+                f.write(self.translated_text_window.translated_text + "\n")
 
     def enable_capture_button(self):
+        """disable the button from being pressed"""
         self.capture_button.setDisabled(False)
-    
+
     def toggle_voice_output(self, state):
+        """boolean if user selects the tts checkbox"""
         if state == Qt.Checked:
             self.voice_output_enabled = True
         else:
@@ -272,22 +299,39 @@ class MainWindow(QMainWindow):
             self.text_to_speech.media_player.stop()
 
     def update_capture_area(self, start, end, geometry):
+        """updates the capture area from user dragging mouse"""
         monitor_geometry = self.monitor_combo.currentData()
         with mss() as sct:
             monitor = sct.monitors[monitor_geometry]
-            left_offset, top_offset,width ,height = monitor['left'], monitor['top'], monitor['width']-1, monitor['height']-1
-        self.correct_capture_area = (start.x() + left_offset, start.y() + top_offset, end.x() - start.x(), end.y() - start.y())
-        self.capture_area = (start.x() - left_offset, start.y() - top_offset, end.x() - start.x(), end.y() - start.y())
-        self.capture_geometry = (left_offset, top_offset, monitor['width'], monitor['height'])
+            left_offset, top_offset = monitor["left"], monitor["top"]
+        self.correct_capture_area = (
+            start.x() + left_offset,
+            start.y() + top_offset,
+            end.x() - start.x(),
+            end.y() - start.y(),
+        )
+        self.capture_area = (
+            start.x() - left_offset,
+            start.y() - top_offset,
+            end.x() - start.x(),
+            end.y() - start.y(),
+        )
+        self.capture_geometry = (
+            left_offset,
+            top_offset,
+            monitor["width"],
+            monitor["height"],
+        )
         self.enable_capture_button()
 
-
     def show_transparent_window(self):
+        """shows the transparent window when user is selecting area"""
         monitor_index = self.monitor_combo.currentData()
         self.transparent_window = TransparentWindow(self, monitor_index)
         self.transparent_window.show()
 
     def populate_monitor_combo(self):
+        """populate the monitors box with the users monitor if not multiple"""
         with mss() as sct:
             for i, monitor in enumerate(sct.monitors[1:], 1):
                 self.monitor_combo.addItem(f"Monitor {i}", i)
@@ -295,18 +339,23 @@ class MainWindow(QMainWindow):
         self.update_monitor_preview(0)
 
     def populate_language_from_combo(self):
+        """populate the language from combo with list of languages available"""
         for language, code in LANGUAGES_OCR:
             self.language_from_combo.addItem(language, code)
 
     def populate_language_to_combo(self):
+        """populate the language to combo with list of languages available"""
         for language, code in LANGUAGES_GOOGLE:
             self.language_to_combo.addItem(language, code)
 
     def update_monitor_preview(self, index):
+        """creats a preview of the users monitors"""
         monitor_index = self.monitor_combo.currentData()
         with mss() as sct:
             monitor = sct.monitors[monitor_index]
-            monitor_info = f"Monitor {monitor_index}: {monitor['width']}x{monitor['height']}"
+            monitor_info = (
+                f"Monitor {monitor_index}: {monitor['width']}x{monitor['height']}"
+            )
             self.monitor_info_label.setText(monitor_info)
 
             screenshot = sct.grab(monitor)
@@ -319,6 +368,7 @@ class MainWindow(QMainWindow):
             self.preview_label.setPixmap(pixmap)
 
     def toggle_capturing(self):
+        """toggle what shows up ui is shown when capturing and not capturing"""
         if self.capturing:
             self.capture_button.setText("Start Capturing")
             self.capturing = False
@@ -338,10 +388,10 @@ class MainWindow(QMainWindow):
             self.voice_label.show()
             self.monitor_label.setText("Select monitor:")
 
-            if self.translated_text_window: 
+            if self.translated_text_window:
                 self.translated_text_window.close()
                 self.translated_text_window = None
-                    
+
         else:
             self.capture_button.setText("Stop Capturing")
             self.capturing = True
@@ -362,9 +412,12 @@ class MainWindow(QMainWindow):
             self.voice_label.hide()
             self.select_area_button.hide()
 
-        
-
     def capture_loop(self):
+        """
+        main loop of capturing gets geometry takes caputures screenshot
+        changes the z postion of translated text window to behind the application
+        so it doesnt show in screenshots
+        """
         if not self.capture_area:
             print("Please select an area first.")
             return
@@ -373,8 +426,13 @@ class MainWindow(QMainWindow):
         monitor_index = self.monitor_combo.currentData()
         with mss() as sct:
             monitor_geometry = sct.monitors[monitor_index]
-            left_offset, top_offset = monitor_geometry['left'], monitor_geometry['top']
-        monitor = {'left': left + left_offset, 'top': top + top_offset, 'width': width, 'height': height}
+            left_offset, top_offset = monitor_geometry["left"], monitor_geometry["top"]
+        monitor = {
+            "left": left + left_offset,
+            "top": top + top_offset,
+            "width": width,
+            "height": height,
+        }
 
         prev_screenshot = capture_screenshot(monitor, monitor_index).convert("L")
         HWND_BOTTOM = 1
@@ -389,46 +447,70 @@ class MainWindow(QMainWindow):
             if self.translated_text_window:
                 hwnd = self.translated_text_window.winId()
                 if hwnd:
-                    win32gui.SetWindowPos(hwnd, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE)
+                    win32gui.SetWindowPos(
+                        hwnd,
+                        HWND_BOTTOM,
+                        0,
+                        0,
+                        0,
+                        0,
+                        SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE,
+                    )
                     time.sleep(0.3)
-            new_screenshot = capture_screenshot(monitor, monitor_index, exclude_hwnd=hwnd).convert("L")
+            new_screenshot = capture_screenshot(monitor, monitor_index).convert("L")
             if hwnd:
-                win32gui.SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE)
-                time.sleep(0.3) 
+                win32gui.SetWindowPos(
+                    hwnd,
+                    HWND_TOPMOST,
+                    0,
+                    0,
+                    0,
+                    0,
+                    SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE,
+                )
+                time.sleep(0.3)
             if has_changed(prev_screenshot, new_screenshot):
                 prev_screenshot = new_screenshot
                 new_screenshot.save("sample_screenshot.png")
                 language_code = self.language_from_combo.currentData()
                 self.screenshot_queue.put((new_screenshot, language_code))
-        
 
-    
     def update_ocr_result(self, text):
+        """
+        sends text to text processor, cleans, translates, preforms cosine similarity
+        saves the text to file if true and displays the translated text window
+        """
         cleaned_text = self.text_processor.process_text(text)
         language_to = self.language_to_combo.currentData()
         monitor_index = self.monitor_combo.currentData()
-        translated_text = self.text_processor.translate_text(cleaned_text, target_language=language_to)
+        translated_text = self.text_processor.translate_text(
+            cleaned_text, target_language=language_to
+        )
 
         if self.previous_translated_text is not None:
-            similarity = self.text_processor.calculate_similarity(self.previous_translated_text, translated_text, language_to)
-            if similarity > 0.8:  
-                return 
+            similarity = self.text_processor.calculate_similarity(
+                self.previous_translated_text, translated_text, language_to
+            )
+            if similarity > 0.8:
+                return
 
-        self.previous_translated_text = translated_text         
-        
+        self.previous_translated_text = translated_text
+
         if self.save_checkbox.isChecked() and self.save_path:
             if translated_text.strip():
-                with open(self.save_path, "a", encoding='utf-8') as output_file:
+                with open(self.save_path, "a", encoding="utf-8") as output_file:
                     output_file.write(translated_text + "\n")
 
-        if hasattr(self, 'translated_text_window') and self.translated_text_window is not None:
+        if (
+            hasattr(self, "translated_text_window")
+            and self.translated_text_window is not None
+        ):
             self.translated_text_window.close()
 
         if self.voice_checkbox.isChecked() and translated_text.strip():
-            self.text_to_speech.play_text_voice(translated_text,language_to)
+            self.text_to_speech.play_text_voice(translated_text, language_to)
 
-        self.translated_text_window = TranslatedTextWindow(self, monitor_index, self.correct_capture_area, translated_text)
+        self.translated_text_window = TranslatedTextWindow(
+            self, monitor_index, self.correct_capture_area, translated_text
+        )
         self.translated_text_window.show()
-
-
-    
