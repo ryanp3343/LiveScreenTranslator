@@ -3,3 +3,6 @@ __pycache__/
 sample_screenshot.png
 testing/
 temp_voice.mp3
+build/
+dist/
+main.spec
