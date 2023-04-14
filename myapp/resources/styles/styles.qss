@@ -1,0 +1,91 @@
+QLabel#center_label {
+    font-size: 16px;
+    color: white;
+}
+
+QToolButton#min_button {
+    background-color: rgb(64,64,64);
+}
+
+QToolButton#close_button {
+    background-color: rgb(64,64,64);
+}
+
+QWidget#central_widget {
+    background-color: rgb(0,0,0);
+}
+
+QPushButton#select_area_button {
+    background-color: rgb(64, 64, 64); 
+    color: white;
+    font-size: 16px; 
+}
+
+QLabel#language_from_label {
+    font-size: 16px; 
+    color: rgb(64, 64, 64);
+     color: white
+}
+
+QLabel#language_to_label {
+    font-size: 16px; 
+    color: rgb(64, 64, 64); 
+    color: white
+}
+
+QComboBox#language_from_combo {
+    background-color: rgb(64, 64, 64); 
+    font-size: 16px; 
+    color: white;
+}
+
+QComboBox#language_to_combo {
+    background-color: rgb(64, 64, 64);
+    font-size: 16px;  
+    color: white;
+}
+
+QLabel#preview_label {
+    background-color: rgb(64, 64, 64);
+    font-size: 16px; 
+    color: white;
+}
+
+QLabel#monitor_info_label {
+    color: white;
+    font-size: 16px; 
+}
+
+QLabel#monitor_label {
+    color: white;
+    font-size: 16px;
+}
+
+QComboBox#monitor_combo {
+    background-color: rgb(64, 64, 64);
+    font-size: 16px;  
+    color: white;
+}
+
+QPushButton#capture_button {
+    background-color: rgb(64, 64, 64);
+    font-size: 16px; 
+     color: white;
+}
+
+QPushButton#capture_button:disabled {
+    background-color: rgb(128, 128, 128);
+    font-size: 16px;  
+    color: rgb(180, 180, 180);
+}
+
+QLabel#save_to_file {
+    color: white;
+    font-size: 16px; 
+}
+
+QLabel#voice_label {
+    color: white;
+    font-size: 16px; 
+}
+
