@@ -1,4 +1,3 @@
-import sys
 import time
 import win32gui
 import threading
@@ -6,9 +5,9 @@ from io import BytesIO
 from queue import Queue
 from mss import mss
 from PIL import Image, ImageChops
-from PyQt5.QtCore import Qt, QPoint,QRect
+from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtGui import QPixmap, QIcon
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QVBoxLayout, QPushButton, QWidget, QComboBox,QHBoxLayout, QToolButton, QCheckBox, QFileDialog
+from PyQt5.QtWidgets import QMainWindow, QLabel, QVBoxLayout, QPushButton, QWidget, QComboBox,QHBoxLayout, QToolButton, QCheckBox, QFileDialog
 from constants.languages_ocr import LANGUAGES_OCR
 from constants.languages_google import LANGUAGES_GOOGLE
 from components.ocr_worker import OCRWorker
@@ -335,6 +334,8 @@ class MainWindow(QMainWindow):
             self.save_text_label.show()
             self.save_checkbox.show()
             self.select_area_button.show()
+            self.voice_checkbox.show()
+            self.voice_label.show()
             self.monitor_label.setText("Select monitor:")
 
             if self.translated_text_window: 
@@ -357,6 +358,8 @@ class MainWindow(QMainWindow):
             self.language_to_combo.hide()
             self.save_text_label.hide()
             self.save_checkbox.hide()
+            self.voice_checkbox.hide()
+            self.voice_label.hide()
             self.select_area_button.hide()
 
         
@@ -427,15 +430,5 @@ class MainWindow(QMainWindow):
         self.translated_text_window = TranslatedTextWindow(self, monitor_index, self.correct_capture_area, translated_text)
         self.translated_text_window.show()
 
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    app.setWindowIcon(QIcon('resources/img/icon.ico'))
-    main_window = MainWindow()
-    main_window.show()
-    sys.exit(app.exec_())
 
-
-#add audio files need to play in full before deleting, possible add queue to store then unitl played to completion?
-#add readme
-#potientally package and export as exe 
     
