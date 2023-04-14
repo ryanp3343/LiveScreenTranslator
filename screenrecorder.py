@@ -15,6 +15,7 @@ from components.ocr_worker import OCRWorker
 from components.text_processor import TextProcessor
 from components.transparent_window import TransparentWindow
 from components.translated_window import TranslatedTextWindow
+from components.text_to_speech import TextToSpeech
 
 def has_changed(prev_screenshot, new_screenshot, threshold=5):
     diff = ImageChops.difference(prev_screenshot, new_screenshot)
@@ -73,6 +74,7 @@ class MainWindow(QMainWindow):
         self.ocr_worker.ocr_result.connect(self.update_ocr_result)
         self.ocr_worker.start()
         self.text_processor = TextProcessor()
+        self.text_to_speech = TextToSpeech(self)
 
         self.setWindowFlags(Qt.FramelessWindowHint)
         self.mousePressed = False
@@ -171,6 +173,18 @@ class MainWindow(QMainWindow):
         self.monitor_info_label.setObjectName("monitor_info_label")
         monitor_info_layout.addWidget(self.monitor_info_label)
 
+        voice_layout = QHBoxLayout()
+        self.voice_label = QLabel("TTS")
+        self.voice_label.setObjectName("voice_label")
+        voice_layout.addWidget(self.voice_label)
+
+        self.voice_checkbox = QCheckBox("Voice Output")
+        self.voice_checkbox.stateChanged.connect(self.toggle_voice_output)
+        voice_layout.addWidget(self.voice_checkbox)
+
+        monitor_info_layout.addLayout(voice_layout)
+
+
         save_text_layout = QHBoxLayout()  
         self.save_text_label = QLabel("Save text to file:")
         self.save_text_label.setObjectName("save_to_file")
@@ -250,6 +264,13 @@ class MainWindow(QMainWindow):
 
     def enable_capture_button(self):
         self.capture_button.setDisabled(False)
+    
+    def toggle_voice_output(self, state):
+        if state == Qt.Checked:
+            self.voice_output_enabled = True
+        else:
+            self.voice_output_enabled = False
+            self.text_to_speech.media_player.stop()
 
     def update_capture_area(self, start, end, geometry):
         monitor_geometry = self.monitor_combo.currentData()
@@ -400,6 +421,9 @@ class MainWindow(QMainWindow):
         if hasattr(self, 'translated_text_window') and self.translated_text_window is not None:
             self.translated_text_window.close()
 
+        if self.voice_checkbox.isChecked() and translated_text.strip():
+            self.text_to_speech.play_text_voice(translated_text,language_to)
+
         self.translated_text_window = TranslatedTextWindow(self, monitor_index, self.correct_capture_area, translated_text)
         self.translated_text_window.show()
 
@@ -411,8 +435,7 @@ if __name__ == "__main__":
     sys.exit(app.exec_())
 
 
-#not print translations if last translation if to similar 
-#add voice after 
+#add audio files need to play in full before deleting, possible add queue to store then unitl played to completion?
 #add readme
 #potientally package and export as exe 
     

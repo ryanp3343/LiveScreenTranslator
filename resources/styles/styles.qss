@@ -84,3 +84,8 @@ QLabel#save_to_file {
     font-size: 16px; 
 }
 
+QLabel#voice_label {
+    color: white;
+    font-size: 16px; 
+}
+
