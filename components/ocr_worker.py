@@ -1,5 +1,5 @@
 from PyQt5.QtCore import QThread, pyqtSignal
-from PIL import Image
+from PIL import Image, ImageOps, ImageFilter
 import pytesseract
 
 #upscale img capture
@@ -8,10 +8,18 @@ def upscale_image(image, scale_factor=2.0):
     new_width, new_height = int(width * scale_factor), int(height * scale_factor)
     return image.resize((new_width, new_height), Image.ANTIALIAS)
 
+def enhance_contrast(image):
+    return ImageOps.autocontrast(image)
+
+
+def gaussian_blur(image, radius=2):
+    return image.filter(ImageFilter.GaussianBlur(radius))
+
+
 #call ocr engine and pass language code
 def ocr_screenshot(image, language_code):
     pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-    config = f'-l {language_code} --psm 3 --oem 1'
+    config = f'-l {language_code} --psm 6 --oem 1'
     return pytesseract.image_to_string(image, config=config)
 
 #post processing

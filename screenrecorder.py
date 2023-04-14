@@ -8,7 +8,7 @@ from mss import mss
 from PIL import Image, ImageChops
 from PyQt5.QtCore import Qt, QPoint,QRect
 from PyQt5.QtGui import QPixmap, QIcon
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QVBoxLayout, QPushButton, QWidget, QComboBox,QHBoxLayout, QToolButton, QCheckBox, QFileDialog, QDesktopWidget
+from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QVBoxLayout, QPushButton, QWidget, QComboBox,QHBoxLayout, QToolButton, QCheckBox, QFileDialog
 from constants.languages_ocr import LANGUAGES_OCR
 from constants.languages_google import LANGUAGES_GOOGLE
 from components.ocr_worker import OCRWorker
@@ -52,11 +52,6 @@ def capture_screenshot(monitor, monitor_index, exclude_hwnd=None):
                 img.paste(transparent_hwnd_img, (hwnd_left - left, hwnd_top - top))
 
         return img
-    
-def upscale_image(image, scale_factor=2.0):
-    width, height = image.size
-    new_width, new_height = int(width * scale_factor), int(height * scale_factor)
-    return image.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
 
 class MainWindow(QMainWindow):
@@ -70,6 +65,7 @@ class MainWindow(QMainWindow):
         self.translated_text_window = None
         self.save_translated_text = False
         self.save_destination = ""
+        self.previous_translated_text = None
         self.initUI()
 
         self.screenshot_queue = Queue()
@@ -357,7 +353,6 @@ class MainWindow(QMainWindow):
         monitor = {'left': left + left_offset, 'top': top + top_offset, 'width': width, 'height': height}
 
         prev_screenshot = capture_screenshot(monitor, monitor_index).convert("L")
-        prev_screenshot = upscale_image(prev_screenshot)
         HWND_BOTTOM = 1
         HWND_TOPMOST = -1
         SWP_NOSIZE = 0x0001
@@ -366,14 +361,13 @@ class MainWindow(QMainWindow):
 
         hwnd = None
         while self.capturing:
-            time.sleep(2)
+            time.sleep(3)
             if self.translated_text_window:
                 hwnd = self.translated_text_window.winId()
                 if hwnd:
                     win32gui.SetWindowPos(hwnd, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE)
                     time.sleep(0.3)
             new_screenshot = capture_screenshot(monitor, monitor_index, exclude_hwnd=hwnd).convert("L")
-            new_screenshot = upscale_image(new_screenshot)
             if hwnd:
                 win32gui.SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE)
                 time.sleep(0.3) 
@@ -384,11 +378,19 @@ class MainWindow(QMainWindow):
                 self.screenshot_queue.put((new_screenshot, language_code))
         
 
+    
     def update_ocr_result(self, text):
         cleaned_text = self.text_processor.process_text(text)
         language_to = self.language_to_combo.currentData()
         monitor_index = self.monitor_combo.currentData()
         translated_text = self.text_processor.translate_text(cleaned_text, target_language=language_to)
+
+        if self.previous_translated_text is not None:
+            similarity = self.text_processor.calculate_similarity(self.previous_translated_text, translated_text, language_to)
+            if similarity > 0.8:  
+                return 
+
+        self.previous_translated_text = translated_text         
         
         if self.save_checkbox.isChecked() and self.save_path:
             if translated_text.strip():
@@ -411,4 +413,6 @@ if __name__ == "__main__":
 
 #not print translations if last translation if to similar 
 #add voice after 
+#add readme
+#potientally package and export as exe 
     
