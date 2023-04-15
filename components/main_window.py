@@ -35,7 +35,7 @@ def has_changed(prev_screenshot, new_screenshot, threshold=5):
     return diff.getbbox() is not None and max_diff > threshold
 
 
-def capture_screenshot(monitor, monitor_index, exclude_hwnd=None):
+def capture_screenshot(monitor, monitor_index):
     """gets geometry of montior area and takes a screenshot of the bbox"""
     with mss() as sct:
         monitor_geometry = sct.monitors[monitor_index]
@@ -440,11 +440,11 @@ class MainWindow(QMainWindow):
         while self.capturing:
             time.sleep(3)
             if self.translated_text_window:
-                self.translated_text_window.setWindowOpacity(0)  # Hide the translated text window
+                self.translated_text_window.setWindowOpacity(0) 
                 time.sleep(0.3)
             new_screenshot = capture_screenshot(monitor, monitor_index).convert("L")
             if self.translated_text_window:
-                self.translated_text_window.setWindowOpacity(1)  # Show the translated text window again
+                self.translated_text_window.setWindowOpacity(1)  
                 time.sleep(0.3)
             if has_changed(prev_screenshot, new_screenshot):
                 prev_screenshot = new_screenshot
