@@ -23,9 +23,9 @@ Key features include:
 
 - [Usage](#usage)
 
-- [Troubleshooting](#troubleshooting)
+- [Disclaimer](#disclaimer)
 
-- [Contributing](#contributing)
+- [Troubleshooting](#troubleshooting)
 
 - [License](#license)
 
@@ -43,11 +43,11 @@ Before installing LiveScreenTranslator, make sure to download and install the fo
 
 **Note:** When installing make sure to click additional script data and additional language data
 
-![installation ](https://user-images.githubusercontent.com/72015041/232171999-2f084e48-8d52-4002-911f-0084bfa8d87e.png)
+<img src="https://user-images.githubusercontent.com/72015041/232171999-2f084e48-8d52-4002-911f-0084bfa8d87e.png" width=600 height=400>
 
 **Note:** When installing Tesseract OCR, please ensure it is installed to the following path: 'C:\Program Files\Tesseract-OCR'
 
-![installation2](https://user-images.githubusercontent.com/72015041/232172279-4d493deb-95be-4d96-ba80-d2c7f1892f39.png)
+<img src="https://user-images.githubusercontent.com/72015041/232172279-4d493deb-95be-4d96-ba80-d2c7f1892f39.png" width=600 height=400>
 
 ## Installation
 
@@ -117,7 +117,12 @@ The translated text will appear on your screen over the selected area. You can a
 ![demo](https://user-images.githubusercontent.com/72015041/232178276-a4715830-26f9-4cec-9d30-278106d4f024.gif)
 
 _Gameplay source: [Original Video](https://youtu.be/2sqmuATp_5U)_
-  
+
+
+## Disclaimer
+
+Please note that OCR and translation services may not always provide 100% accurate results. Factors that can affect the accuracy of OCR include background, color, image quality, and text size. In terms of translations, certain expressions, slang terms, or idiomatic phrases may not be translated accurately or may lack appropriate equivalents in the target language. Users are advised to consider these potential limitations if relying on LiveScreenTranslator for their translation needs.
+
 
 ## Troubleshooting
 
