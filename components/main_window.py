@@ -1,5 +1,6 @@
 import time
 import win32gui
+import win32con
 import threading
 from io import BytesIO
 from queue import Queue
@@ -80,6 +81,7 @@ class MainWindow(QMainWindow):
         self.save_translated_text = False
         self.save_destination = ""
         self.previous_translated_text = None
+        self.update_translation_window = True
         self.initUI()
 
         self.screenshot_queue = Queue()
@@ -387,7 +389,7 @@ class MainWindow(QMainWindow):
             self.voice_checkbox.show()
             self.voice_label.show()
             self.monitor_label.setText("Select monitor:")
-
+            self.update_translation_window = False
             if self.translated_text_window:
                 self.translated_text_window.close()
                 self.translated_text_window = None
@@ -411,12 +413,13 @@ class MainWindow(QMainWindow):
             self.voice_checkbox.hide()
             self.voice_label.hide()
             self.select_area_button.hide()
+            self.update_translation_window = True
+            self.text_to_speech.stop_voice()
 
     def capture_loop(self):
         """
         main loop of capturing gets geometry takes caputures screenshot
-        changes the z postion of translated text window to behind the application
-        so it doesnt show in screenshots
+        hides the translated text window to prevent it from being captured in the screenshot
         """
         if not self.capture_area:
             print("Please select an area first.")
@@ -435,45 +438,23 @@ class MainWindow(QMainWindow):
         }
 
         prev_screenshot = capture_screenshot(monitor, monitor_index).convert("L")
-        HWND_BOTTOM = 1
-        HWND_TOPMOST = -1
-        SWP_NOSIZE = 0x0001
-        SWP_NOMOVE = 0x0002
-        SWP_NOACTIVATE = 0x0010
 
-        hwnd = None
         while self.capturing:
             time.sleep(3)
             if self.translated_text_window:
-                hwnd = self.translated_text_window.winId()
-                if hwnd:
-                    win32gui.SetWindowPos(
-                        hwnd,
-                        HWND_BOTTOM,
-                        0,
-                        0,
-                        0,
-                        0,
-                        SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE,
-                    )
-                    time.sleep(0.3)
+                self.translated_text_window.setWindowOpacity(0)  # Hide the translated text window
+                time.sleep(0.3)
             new_screenshot = capture_screenshot(monitor, monitor_index).convert("L")
-            if hwnd:
-                win32gui.SetWindowPos(
-                    hwnd,
-                    HWND_TOPMOST,
-                    0,
-                    0,
-                    0,
-                    0,
-                    SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE,
-                )
+            if self.translated_text_window:
+                self.translated_text_window.setWindowOpacity(1)  # Show the translated text window again
                 time.sleep(0.3)
             if has_changed(prev_screenshot, new_screenshot):
                 prev_screenshot = new_screenshot
                 new_screenshot.save("sample_screenshot.png")
                 language_code = self.language_from_combo.currentData()
                 self.screenshot_queue.put((new_screenshot, language_code))
+
+
 
     def update_ocr_result(self, text):
         """
@@ -501,16 +482,17 @@ class MainWindow(QMainWindow):
                 with open(self.save_path, "a", encoding="utf-8") as output_file:
                     output_file.write(translated_text + "\n")
 
-        if (
-            hasattr(self, "translated_text_window")
-            and self.translated_text_window is not None
-        ):
-            self.translated_text_window.close()
+        if self.update_translation_window:
+            if (
+                hasattr(self, "translated_text_window")
+                and self.translated_text_window is not None
+            ):
+                self.translated_text_window.close()
 
-        if self.voice_checkbox.isChecked() and translated_text.strip():
-            self.text_to_speech.play_text_voice(translated_text, language_to)
+            if self.voice_checkbox.isChecked() and translated_text.strip():
+                self.text_to_speech.play_text_voice(translated_text, language_to)
 
-        self.translated_text_window = TranslatedTextWindow(
-            self, monitor_index, self.correct_capture_area, translated_text
-        )
-        self.translated_text_window.show()
+            self.translated_text_window = TranslatedTextWindow(
+                self, monitor_index, self.correct_capture_area, translated_text
+            )
+            self.translated_text_window.show()

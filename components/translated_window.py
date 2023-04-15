@@ -1,5 +1,5 @@
 from PyQt5.QtCore import Qt, QRect
-from PyQt5.QtGui import QPainter, QColor, QFontMetrics
+from PyQt5.QtGui import QPainter, QColor, QFontMetrics, QPen, QPainterPath
 from PyQt5.QtWidgets import QWidget, QDesktopWidget
 import random
 
@@ -40,13 +40,14 @@ class TranslatedTextWindow(QWidget):
                 random.randint(0, 255),
                 random.randint(0, 255),
                 random.randint(0, 255),
-                230,
+                255,
             )
         )
         painter.drawRect(self.rect())
 
         font = painter.font()
         font.setPointSize(20)
+        font.setBold(True)
         painter.setFont(font)
         bounding_rect = QRect(0, 0, self.width(), self.height())
 
@@ -55,6 +56,14 @@ class TranslatedTextWindow(QWidget):
         text_rect = font_metrics.boundingRect(bounding_rect, Qt.TextWordWrap, self.text)
         x_center = (self.width() - text_rect.width()) // 2
 
+        text_path = QPainterPath()
+        text_path.addText(x_center, font_metrics.ascent(), font, self.text)
+
+        painter.setPen(QPen(QColor(0, 0, 0), 3, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+        painter.setBrush(Qt.NoBrush)
+        painter.drawPath(text_path)
+        painter.setPen(QColor(255, 255, 255))
+        painter.setBrush(Qt.NoBrush)
         painter.drawText(
             x_center, 0, text_rect.width(), self.height(), Qt.TextWordWrap, self.text
         )

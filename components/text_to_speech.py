@@ -18,11 +18,13 @@ class TextToSpeech:
         self.text_queue = queue.Queue()
         self.queue_timer = QTimer(self.parent)
         self.queue_timer.setSingleShot(True)
+        self.playback_enabled = True
         self.queue_timer.timeout.connect(self.check_queue)
         self.media_player.mediaStatusChanged.connect(self.handle_media_status_change)
 
     def play_text_voice(self, text, lang):
         """Adds text and language code to queue and plays"""
+        self.playback_enabled = True
         self.text_queue.put((text, lang))
         if self.media_player.state() == QMediaPlayer.StoppedState:
             self.play_next_audio()
@@ -57,5 +59,12 @@ class TextToSpeech:
 
     def check_queue(self):
         """checks if the player has stopped and plays next in queue if true"""
-        if self.media_player.state() == QMediaPlayer.StoppedState:
+        if self.media_player.state() == QMediaPlayer.StoppedState and self.playback_enabled:
             self.play_next_audio()
+
+    def stop_voice(self):
+        """Stops tts and clears the queue"""
+        self.playback_enabled = False
+        self.media_player.stop()
+        self.text_queue.queue.clear()
+
