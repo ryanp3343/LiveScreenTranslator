@@ -108,12 +108,15 @@ To use LiveScreenTranslator, follow these steps:
 
 <img width="1214" alt="usage2" src="https://user-images.githubusercontent.com/72015041/232173877-2790a8ba-da68-4561-85f1-4150e0b4723a.png">
 
+_Gameplay source: [Original Video](https://youtu.be/2sqmuATp_5U)_
+
 7. Click the "Start Capturing Screen" button to begin real-time translation.
 
 The translated text will appear on your screen over the selected area. You can adjust the source and target languages or change the capture area as needed while using the application.
 
+![demo](https://user-images.githubusercontent.com/72015041/232178276-a4715830-26f9-4cec-9d30-278106d4f024.gif)
 
-
+_Gameplay source: [Original Video](https://youtu.be/2sqmuATp_5U)_
   
 
 ## Troubleshooting
@@ -148,6 +151,6 @@ LiveScreenTranslator is released under the [MIT License](LICENSE). For more info
 For any questions or inquiries, please feel free to reach out:
 
 
-- [Your Name](mailto:ryan_puertas@yahoo.com)
+- [Ryan Puertas](mailto:ryan_puertas@yahoo.com)
 
 - [GitHub Profile](https://github.com/ryanp3343)
