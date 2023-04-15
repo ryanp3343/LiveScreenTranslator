@@ -64,7 +64,7 @@ There are two ways to install and run LiveScreenTranslator:
 1. Clone the LiveScreenTranslator repository to your local machine using the following command:
 
     ```
-    git clone https://github.com/ryanp3343/LiveScreenTranslator.git`	
+    git clone https://github.com/ryanp3343/LiveScreenTranslator.git
     ```
 
 2. Navigate to the cloned repository folder:
