@@ -1,6 +1,4 @@
 import time
-import win32gui
-import win32con
 import threading
 from io import BytesIO
 from queue import Queue

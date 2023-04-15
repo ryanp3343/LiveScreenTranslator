@@ -1,4 +1,4 @@
-from PIL import Image, ImageOps, ImageFilter
+from PIL import Image
 import pytesseract
 from PyQt5.QtCore import QThread, pyqtSignal
 
