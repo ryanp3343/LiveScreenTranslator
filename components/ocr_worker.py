@@ -7,7 +7,7 @@ def upscale_image(image, scale_factor=2.0):
     """upscale image by scale faction using antialiaising"""
     width, height = image.size
     new_width, new_height = int(width * scale_factor), int(height * scale_factor)
-    return image.resize((new_width, new_height), Image.ANTIALIAS)
+    return image.resize((new_width, new_height), Image.LANCZOS)
 
 
 def adaptive_thresholding(image):
