@@ -20,7 +20,17 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y tesseract-ocr
         sudo apt-get install -y libtesseract-dev
-        sudo apt-get install -y tesseract-ocr-afr tesseract-ocr-sqi tesseract-ocr-amh tesseract-ocr-ara tesseract-ocr-hye tesseract-ocr-aze tesseract-ocr-eus tesseract-ocr-bel tesseract-ocr-ben tesseract-ocr-bos tesseract-ocr-bul tesseract-ocr-cat tesseract-ocr-ceb tesseract-ocr-chi-sim tesseract-ocr-chi-tra tesseract-ocr-cos tesseract-ocr-hrv tesseract-ocr-ces tesseract-ocr-dan tesseract-ocr-nld tesseract-ocr-eng tesseract-ocr-epo tesseract-ocr-est tesseract-ocr-fin tesseract-ocr-fra tesseract-ocr-fry tesseract-ocr-glg tesseract-ocr-kat tesseract-ocr-deu tesseract-ocr-ell tesseract-ocr-guj tesseract-ocr-hat tesseract-ocr-hau tesseract-ocr-haw tesseract-ocr-heb tesseract-ocr-hin tesseract-ocr-hun tesseract-ocr-isl tesseract-ocr-ibo tesseract-ocr-ind tesseract-ocr-gle tesseract-ocr-ita tesseract-ocr-jpn tesseract-ocr-jav tesseract-ocr-kan tesseract-ocr-kaz tesseract-ocr-khm tesseract-ocr-kor tesseract-ocr-kmr tesseract-ocr-kir tesseract-ocr-lao tesseract-ocr-lat tesseract-ocr-lav tesseract-ocr-lit tesseract-ocr-ltz tesseract-ocr-mkd tesseract-ocr-mlg tesseract-ocr-msa tesseract-ocr-mal tesseract-ocr-mlt tesseract-ocr-mri tesseract-ocr-mar tesseract-ocr-mon tesseract-ocr-nep tesseract-ocr-nor tesseract-ocr-pus tesseract-ocr-fas tesseract-ocr-pol tesseract-ocr-por tesseract-ocr-pan tesseract-ocr-ron tesseract-ocr-rus tesseract-ocr-srp tesseract-ocr-sot tesseract-ocr-sna tesseract-ocr-snd tesseract-ocr-sin tesseract-ocr-slk tesseract-ocr-slv tesseract-ocr-som tesseract-ocr-spa tesseract-ocr-sun tesseract-ocr-swa tesseract-ocr-swe tesseract-ocr-tgl tesseract-ocr-tgk tesseract-ocr-tam tesseract-ocr-tel tesseract-ocr-tha tesseract-ocr-tur tesseract-ocr-ukr tesseract-ocr-urd tesseract-ocr-uzb tesseract-ocr-vie tesseract-ocr-cym tesseract-ocr-xho tesseract-ocr-yid tesseract-ocr-yor tesseract-ocr-zul
+        
+    - name: Create tessdata directory
+      run: sudo mkdir -p /usr/share/tessdata
+
+    - name: Download Tesseract language data
+      run: |
+        for lang in afr sqi amh ara hye aze eus bel ben bos bul cat ceb chi_sim chi_tra cos hrv ces dan nld eng epo est fin fra fry glg kat deu ell guj hat hau haw heb hin hun isl ibo ind gle ita jpn jav kan kaz khm kor kmr kir lao lat lav lit ltz mkd mlg msa mal mlt mri mar mon nep nor pus fas pol por pan ron rus srp sot sna snd sin slk slv som spa sun swa swe tgl tgk tam tel tha tur ukr urd uzb vie cym xho yid yor zul; do
+          sudo wget -P /usr/share/tessdata https://github.com/tesseract-ocr/tessdata_best/raw/master/$lang.traineddata
+        done
+
+
     - name: Install system dependencies
       run: |
         sudo apt-get update
