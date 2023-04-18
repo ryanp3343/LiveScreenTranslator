@@ -15,10 +15,26 @@ jobs:
       with:
         python-version: 3.11
 
-    - name: Install Tesseract OCR
+    - name: Install CMake
+      run: choco install cmake
+
+    - name: Build Tesseract
       run: |
-        choco install tesseract
-        choco install tesseract-ocr-afr
+        git clone https://github.com/tesseract-ocr/tesseract.git
+        cd tesseract
+        mkdir build
+        cd build
+        cmake -G "Visual Studio 16 2019" -A x64 ..
+        cmake --build . --config Release --target INSTALL
+
+
+    - name: Download tessdata
+      run: |
+        mkdir -p ${{env.TESSDATA_PREFIX}}
+        cd ${{env.TESSDATA_PREFIX}}
+        curl -LO https://github.com/tesseract-ocr/tessdata_fast/raw/master/eng.traineddata
+
+
 
     - name: Install system dependencies
       run: choco install pulseaudio
