@@ -1,5 +1,6 @@
 """language codes for py tesseract"""
 
+
 LANGUAGES_OCR = [
     ("Afrikaans", "afr"),
     ("Albanian", "sqi"),
@@ -71,7 +72,6 @@ LANGUAGES_OCR = [
     ("Russian", "rus"),
     ("Serbian", "srp"),
     ("Sindhi", "snd"),
-    ("Sinhala", "sin"),
     ("Slovak", "slk"),
     ("Slovenian", "slv"),
     ("Somali", "som"),
@@ -79,7 +79,6 @@ LANGUAGES_OCR = [
     ("Sundanese", "sun"),
     ("Swahili", "swa"),
     ("Swedish", "swe"),
-    ("Tagalog", "tgl"),
     ("Tajik", "tgk"),
     ("Tamil", "tam"),
     ("Telugu", "tel"),
@@ -90,8 +89,6 @@ LANGUAGES_OCR = [
     ("Uzbek", "uzb"),
     ("Vietnamese", "vie"),
     ("Welsh", "cym"),
-    ("Xhosa", "xho"),
     ("Yiddish", "yid"),
     ("Yoruba", "yor"),
-    ("Zulu", "zul"),
 ]

@@ -1,5 +1,6 @@
 """ language codes for googletrans"""
 
+
 LANGUAGES_GOOGLE = [
     ("Afrikaans", "af"),
     ("Albanian", "sq"),
