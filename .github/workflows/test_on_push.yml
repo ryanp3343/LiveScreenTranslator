@@ -15,17 +15,6 @@ jobs:
       with:
         python-version: 3.11
 
-    - name: Install Tesseract OCR
-      run: |
-        choco install tesseract
-
-    - name: Download Tesseract language data
-      run: |
-        $tessdata_url = "https://github.com/tesseract-ocr/tessdata_best/raw/main/afr.traineddata"
-        $tessdata_dir = "${env:TESSDATA_PREFIX}\tessdata"
-        New-Item -ItemType Directory -Force -Path $tessdata_dir
-        Invoke-WebRequest -Uri $tessdata_url -OutFile "${tessdata_dir}\afr.traineddata"
-
     - name: Install system dependencies
       run: choco install pulseaudio
 
