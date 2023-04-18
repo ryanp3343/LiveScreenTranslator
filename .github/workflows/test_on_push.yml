@@ -4,7 +4,7 @@ on: [push]
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
     - name: Checkout repository
@@ -14,20 +14,17 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: 3.11
-    
+
     - name: Install Tesseract OCR
       run: |
-        sudo apt-get update
-        sudo apt-get install -y tesseract-ocr
-        sudo apt-get install -y libtesseract-dev
-        sudo apt-get install -y tesseract-ocr-afr tesseract-ocr-sqi tesseract-ocr-amh tesseract-ocr-ara tesseract-ocr-hye tesseract-ocr-aze tesseract-ocr-eus tesseract-ocr-bel tesseract-ocr-ben tesseract-ocr-bos tesseract-ocr-bul tesseract-ocr-cat tesseract-ocr-ceb tesseract-ocr-chi-sim tesseract-ocr-chi-tra tesseract-ocr-cos tesseract-ocr-hrv tesseract-ocr-ces tesseract-ocr-dan tesseract-ocr-nld tesseract-ocr-eng tesseract-ocr-epo tesseract-ocr-est tesseract-ocr-fin tesseract-ocr-fra tesseract-ocr-fry tesseract-ocr-glg tesseract-ocr-kat tesseract-ocr-deu tesseract-ocr-ell tesseract-ocr-guj tesseract-ocr-hat tesseract-ocr-heb tesseract-ocr-hin tesseract-ocr-hun tesseract-ocr-isl tesseract-ocr-ind tesseract-ocr-gle tesseract-ocr-ita tesseract-ocr-jpn tesseract-ocr-jav tesseract-ocr-kan tesseract-ocr-kaz tesseract-ocr-khm tesseract-ocr-kor tesseract-ocr-kmr tesseract-ocr-kir tesseract-ocr-lao tesseract-ocr-lat tesseract-ocr-lav tesseract-ocr-lit tesseract-ocr-ltz tesseract-ocr-mkd tesseract-ocr-msa tesseract-ocr-mal tesseract-ocr-mlt tesseract-ocr-mri tesseract-ocr-mar tesseract-ocr-mon tesseract-ocr-nep tesseract-ocr-nor tesseract-ocr-pus tesseract-ocr-fas tesseract-ocr-pol tesseract-ocr-por tesseract-ocr-pan tesseract-ocr-ron tesseract-ocr-rus tesseract-ocr-srp tesseract-ocr-snd tesseract-ocr-sin tesseract-ocr-slk tesseract-ocr-slv tesseract-ocr-spa tesseract-ocr-sun tesseract-ocr-swa tesseract-ocr-swe tesseract-ocr-tgk tesseract-ocr-tam tesseract-ocr-tel tesseract-ocr-tha tesseract-ocr-tur tesseract-ocr-ukr tesseract-ocr-urd tesseract-ocr-uzb tesseract-ocr-vie tesseract-ocr-cym tesseract-ocr-yid tesseract-ocr-yor
+        choco install tesseract
+        choco install tesseract-afr tesseract-sqi tesseract-amh tesseract-ara tesseract-hye tesseract-aze tesseract-eus tesseract-bel tesseract-ben tesseract-bos tesseract-bul tesseract-cat tesseract-ceb tesseract-chi-sim tesseract-chi-tra tesseract-cos tesseract-hrv tesseract-ces tesseract-dan tesseract-nld tesseract-eng tesseract-epo tesseract-est tesseract-fin tesseract-fra tesseract-fry tesseract-glg tesseract-kat tesseract-deu tesseract-ell tesseract-guj tesseract-hat tesseract-heb tesseract-hin tesseract-hun tesseract-isl tesseract-ind tesseract-gle tesseract-ita tesseract-jpn tesseract-jav tesseract-kan tesseract-kaz tesseract-khm tesseract-kor tesseract-kmr tesseract-kir tesseract-lao tesseract-lat tesseract-lav tesseract-lit tesseract-ltz tesseract-mkd tesseract-msa tesseract-mal tesseract-mlt tesseract-mri tesseract-mar tesseract-mon tesseract-nep tesseract-nor tesseract-pus tesseract-fas tesseract-pol tesseract-por tesseract-pan tesseract-ron tesseract-rus tesseract-srp tesseract-snd tesseract-sin tesseract-slk tesseract-slv tesseract-spa tesseract-sun tesseract-swa tesseract-swe tesseract-tgk tesseract-tam tesseract-tel tesseract-tha tesseract-tur tesseract-ukr tesseract-urd tesseract-uzb tesseract-vie tesseract-cym tesseract-yid tesseract-yor
+
     - name: Install system dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libpulse-mainloop-glib0
+      run: choco install pulseaudio
 
     - name: Install xvfb
-      run: sudo apt-get install -y xvfb
+      run: choco install xvfb
 
     - name: Install dependencies
       run: |
@@ -37,4 +34,3 @@ jobs:
 
     - name: Run pytest
       run: xvfb-run --auto-servernum --server-args='-screen 0 1024x768x24' pytest tests
-
