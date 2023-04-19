@@ -195,6 +195,7 @@ class MainWindow(QMainWindow):
         voice_layout.addWidget(self.voice_label)
 
         self.voice_checkbox = QCheckBox("Voice Output")
+        self.voice_checkbox.setObjectName("voice_checkbox")
         self.voice_checkbox.stateChanged.connect(self.toggle_voice_output)
         voice_layout.addWidget(self.voice_checkbox)
 
@@ -206,6 +207,7 @@ class MainWindow(QMainWindow):
         save_text_layout.addWidget(self.save_text_label)
 
         self.save_checkbox = QCheckBox("Select Destination")
+        self.save_checkbox.setObjectName("save_checkbox") 
         self.save_checkbox.stateChanged.connect(self.select_save_destination)
         save_text_layout.addWidget(self.save_checkbox)
 
@@ -296,7 +298,7 @@ class MainWindow(QMainWindow):
             self.voice_output_enabled = True
         else:
             self.voice_output_enabled = False
-            self.text_to_speech.media_player.stop()
+            self.text_to_speech.stop_voice()
 
     def update_capture_area(self, start, end, geometry):
         """updates the capture area from user dragging mouse"""
@@ -340,11 +342,13 @@ class MainWindow(QMainWindow):
 
     def populate_language_from_combo(self):
         """populate the language from combo with list of languages available"""
+        self.language_from_combo.clear()
         for language, code in LANGUAGES_OCR:
             self.language_from_combo.addItem(language, code)
 
     def populate_language_to_combo(self):
         """populate the language to combo with list of languages available"""
+        self.language_to_combo.clear()
         for language, code in LANGUAGES_GOOGLE:
             self.language_to_combo.addItem(language, code)
 
@@ -448,7 +452,7 @@ class MainWindow(QMainWindow):
                 time.sleep(0.3)
             if has_changed(prev_screenshot, new_screenshot):
                 prev_screenshot = new_screenshot
-                new_screenshot.save("sample_screenshot.png")
+                # new_screenshot.save("sample_screenshot.png")
                 language_code = self.language_from_combo.currentData()
                 self.screenshot_queue.put((new_screenshot, language_code))
 
