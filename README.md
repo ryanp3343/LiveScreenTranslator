@@ -1,3 +1,4 @@
+![Unit Tests](https://github.com/ryanp3343/LiveScreenTranslator/actions/workflows/tests.yml/badge.svg)
 # LiveScreenTranslator
 
   
