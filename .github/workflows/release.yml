@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest  # or other OS if required
+    runs-on: windows-latest 
 
     steps:
     - name: Checkout repository
@@ -16,7 +16,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: 3.x  # Replace with the desired Python version
+        python-version: 3.11
 
     - name: Install dependencies
       run: |
@@ -47,7 +47,7 @@ jobs:
         git checkout -B release
         git add LiveScreenTranslator_app.zip
         git commit -m "Add LiveScreenTranslator_app.zip for release ${{ github.ref }}"
-        git push origin release-${{ github.ref }}
+        git push origin release
 
     - name: Create Release
       id: create_release
