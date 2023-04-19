@@ -40,6 +40,11 @@ jobs:
       run: |
         Compress-Archive -Path LiveScreenTranslator_app -DestinationPath LiveScreenTranslator_app.zip
 
+    - name: Configure git remote with token
+      run: |
+        git remote set-url origin https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}
+
+
     - name: Add LiveScreenTranslator_app.zip to repository
       run: |
         git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
