@@ -1,0 +1,63 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: windows-latest 
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.11  
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+
+    - name: Build executable
+      run: |
+        pyinstaller --onefile --name LiveScreenTranslator main.py
+
+    - name: Create LiveScreenTranslator_app folder
+      run: |
+        mkdir LiveScreenTranslator_app
+        move dist\LiveScreenTranslator.exe LiveScreenTranslator_app
+        xcopy components LiveScreenTranslator_app\components /E /I
+        xcopy constants LiveScreenTranslator_app\constants /E /I
+        xcopy resources LiveScreenTranslator_app\resources /E /I
+
+    - name: Zip LiveScreenTranslator_app folder
+      run: |
+        Compress-Archive -Path LiveScreenTranslator_app -DestinationPath LiveScreenTranslator_app.zip
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        draft: false
+        prerelease: false
+
+    - name: Upload Release Asset
+      id: upload-release-asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./LiveScreenTranslator_app.zip
+        asset_name: LiveScreenTranslator_app.zip
+        asset_content_type: application/zip

@@ -7,3 +7,5 @@ build/
 dist/
 main.spec
 myapp/
+LiveScreenTranslator_app/
+LiveScreenTranslator.spec
