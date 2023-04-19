@@ -16,18 +16,16 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: 3.11
+        python-version: 3.11  
 
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install pyinstaller
-
     - name: Build executable
       run: |
         pyinstaller --onefile --name LiveScreenTranslator main.py
-
     - name: Create LiveScreenTranslator_app folder
       run: |
         mkdir LiveScreenTranslator_app
@@ -35,25 +33,9 @@ jobs:
         xcopy components LiveScreenTranslator_app\components /E /I
         xcopy constants LiveScreenTranslator_app\constants /E /I
         xcopy resources LiveScreenTranslator_app\resources /E /I
-
     - name: Zip LiveScreenTranslator_app folder
       run: |
         Compress-Archive -Path LiveScreenTranslator_app -DestinationPath LiveScreenTranslator_app.zip
-
-    - name: Configure git remote with token
-      run: |
-        git remote set-url origin https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}
-
-
-    - name: Add LiveScreenTranslator_app.zip to repository
-      run: |
-        git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        git config --global user.name "GitHub Actions"
-        git checkout -B release
-        git add LiveScreenTranslator_app.zip
-        git commit -m "Add LiveScreenTranslator_app.zip for release ${{ github.ref }}"
-        git push origin release
-
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1
@@ -64,7 +46,6 @@ jobs:
         release_name: Release ${{ github.ref }}
         draft: false
         prerelease: false
-        target_commitish: release
 
     - name: Upload Release Asset
       id: upload-release-asset
