@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest 
+    runs-on: windows-latest  # or other OS if required
 
     steps:
     - name: Checkout repository
@@ -16,7 +16,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: 3.11  
+        python-version: 3.x  # Replace with the desired Python version
 
     - name: Install dependencies
       run: |
@@ -40,6 +40,15 @@ jobs:
       run: |
         Compress-Archive -Path LiveScreenTranslator_app -DestinationPath LiveScreenTranslator_app.zip
 
+    - name: Add LiveScreenTranslator_app.zip to repository
+      run: |
+        git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git config --global user.name "GitHub Actions"
+        git checkout -B release
+        git add LiveScreenTranslator_app.zip
+        git commit -m "Add LiveScreenTranslator_app.zip for release ${{ github.ref }}"
+        git push origin release-${{ github.ref }}
+
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1
@@ -50,6 +59,7 @@ jobs:
         release_name: Release ${{ github.ref }}
         draft: false
         prerelease: false
+        target_commitish: release
 
     - name: Upload Release Asset
       id: upload-release-asset
