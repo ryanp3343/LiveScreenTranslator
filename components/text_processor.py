@@ -47,11 +47,15 @@ class TextProcessor:
         if lang not in stopwords.fileids():
             return text
 
+        text = text.lower()
+        text = re.sub(r"[^\w\s]", "", text, flags=re.UNICODE)
+
         stop_words = set(stopwords.words(lang))
         word_tokens = word_tokenize(text)
         return " ".join(
             [word for word in word_tokens if word.lower() not in stop_words]
         )
+
 
     def calculate_similarity(self, text1, text2, language_code):
         """calculates the cosine similarity between the current and previous text sent"""

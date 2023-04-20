@@ -33,14 +33,11 @@ def test_mouse_events(transparent_window, qtbot):
     start_point = QPoint(100, 100)
     end_point = QPoint(200, 200)
 
-    # Simulate mouse press
     QTest.mousePress(transparent_window, Qt.LeftButton, pos=start_point)
     assert transparent_window.start_point == start_point
 
     transparent_window.end_point = end_point
     assert transparent_window.end_point == end_point
-
-    # Simulate mouse release
     QTest.mouseRelease(transparent_window, Qt.LeftButton, pos=end_point)
     assert transparent_window.end_point == end_point
 

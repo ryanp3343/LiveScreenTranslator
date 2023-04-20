@@ -474,7 +474,7 @@ class MainWindow(QMainWindow):
             similarity = self.text_processor.calculate_similarity(
                 self.previous_translated_text, translated_text, language_to
             )
-            if similarity > 0.8:
+            if similarity > 0.6:
                 return
 
         self.previous_translated_text = translated_text

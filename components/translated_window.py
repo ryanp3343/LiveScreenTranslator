@@ -49,31 +49,55 @@ class TranslatedTextWindow(QWidget):
         font.setPointSize(20)
         font.setBold(True)
         painter.setFont(font)
-        bounding_rect = QRect(0, 0, self.width(), self.height())
 
-        # Caluclates the horizontal center
+        padding_top = 10
+        padding_left_right = 10
+        bounding_rect = QRect(0, 0, self.width() - 2 * padding_left_right, self.height())
+
+        # Calculates the horizontal center
         font_metrics = QFontMetrics(font)
         text_rect = font_metrics.boundingRect(bounding_rect, Qt.TextWordWrap, self.text)
-        x_center = (self.width() - text_rect.width()) // 2
+        x_center = padding_left_right + (bounding_rect.width() - text_rect.width()) // 2
+
+        # Wrap the text into lines based on the available width
+        text_lines = []
+        words = self.text.split(' ')
+        line = words[0]
+        for word in words[1:]:
+            new_line = line + ' ' + word
+            if font_metrics.width(new_line) > bounding_rect.width():
+                text_lines.append(line)
+                line = word
+            else:
+                line = new_line
+        text_lines.append(line)
 
         text_path = QPainterPath()
-        text_path.addText(x_center, font_metrics.ascent(), font, self.text)
+        current_y = font_metrics.capHeight() + padding_top
+        for line in text_lines:
+            text_path.addText(x_center, current_y, font, line)
+            current_y += font_metrics.lineSpacing()
 
+        # Draw outline
         painter.setPen(QPen(QColor(0, 0, 0), 3, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
         painter.setBrush(Qt.NoBrush)
         painter.drawPath(text_path)
-        painter.setPen(QColor(255, 255, 255))
-        painter.setBrush(Qt.NoBrush)
-        painter.drawText(
-            x_center, 0, text_rect.width(), self.height(), Qt.TextWordWrap, self.text
-        )
 
-        # Resize the window bases on text and capture area width and height
+        # Draw text with the fill color
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QColor(255, 255, 255))
+        painter.drawPath(text_path)
+
+        # Resize the window based on text and capture area width and height
         min_width, min_height = 50, 20
-        new_width = max(text_rect.width(), min_width)
-        new_height = max(text_rect.height(), min_height)
+        new_width = max(text_rect.width() + 2 * padding_left_right, min_width)
+        new_height = max(text_rect.height() + padding_top, min_height)
         self.resize(new_width, new_height)
         self.update_position()
+
+
+
+
 
     def update_position(self):
         """Calculate the x and y coordinates relative to capture area"""
