@@ -1,4 +1,5 @@
 ![Unit Tests](https://github.com/ryanp3343/LiveScreenTranslator/actions/workflows/tests.yml/badge.svg)
+![Release](https://github.com/ryanp3343/LiveScreenTranslator/actions/workflows/release.yml/badge.svg)
 [![GitHub release](https://img.shields.io/github/release/ryanp3343/LiveScreenTranslator.svg)](https://github.com/ryanp3343/LiveScreenTranslator/releases/latest)
 
 # LiveScreenTranslator
