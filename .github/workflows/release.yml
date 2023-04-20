@@ -26,16 +26,16 @@ jobs:
     - name: Build executable
       run: |
         pyinstaller --onefile --name LiveScreenTranslator main.py
-    - name: Create LiveScreenTranslator_app folder
+    - name: Create LiveScreenTranslator folder
       run: |
-        mkdir LiveScreenTranslator_app
-        move dist\LiveScreenTranslator.exe LiveScreenTranslator_app
-        xcopy components LiveScreenTranslator_app\components /E /I
-        xcopy constants LiveScreenTranslator_app\constants /E /I
-        xcopy resources LiveScreenTranslator_app\resources /E /I
-    - name: Zip LiveScreenTranslator_app folder
+        mkdir LiveScreenTranslator
+        move dist\LiveScreenTranslator.exe LiveScreenTranslator
+        xcopy components LiveScreenTranslator\components /E /I
+        xcopy constants LiveScreenTranslator\constants /E /I
+        xcopy resources LiveScreenTranslator\resources /E /I
+    - name: Zip LiveScreenTranslator folder
       run: |
-        Compress-Archive -Path LiveScreenTranslator_app -DestinationPath LiveScreenTranslator_app.zip
+        Compress-Archive -Path LiveScreenTranslator -DestinationPath LiveScreenTranslator.zip
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1
@@ -54,6 +54,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./LiveScreenTranslator_app.zip
-        asset_name: LiveScreenTranslator_app.zip
+        asset_path: ./LiveScreenTranslator.zip
+        asset_name: LiveScreenTranslator.zip
         asset_content_type: application/zip
