@@ -59,7 +59,7 @@ There are two ways to install and run LiveScreenTranslator:
 
 ### Method 1: Download the Release
 
-1. Download the latest release of LiveScreenTranslator from the [Releases page](https://github.com/ryanp3343/LiveScreenTranslator/releases). Download the LiveScreenTranslator_app.zip asset.
+1. Download the latest release of LiveScreenTranslator from the [Releases page](https://github.com/ryanp3343/LiveScreenTranslator/releases). Download the LiveScreenTranslator.zip asset.
 2. Extract the downloaded archive to a location of your choice.
 3. Navigate to the extracted folder and run the `main.exe` file to start the application.
 
