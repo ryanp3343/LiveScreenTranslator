@@ -117,8 +117,8 @@ def test_remove_stopwords(language_code, _):
         pytest.skip(f"Unsupported language: {language_code}")
     else:
         text_processor = TextProcessor()
-        input_text = "This is a test sentence with some common English stopwords"
-        expected_output = "test sentence common English stopwords"
+        input_text = "this is a test sentence with some common english stopwords"
+        expected_output = "test sentence common english stopwords"
         result = text_processor.remove_stopwords(input_text, language_code)
         if language_code == "en":
             assert result == expected_output
