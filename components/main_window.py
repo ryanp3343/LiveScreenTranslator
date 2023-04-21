@@ -4,7 +4,7 @@ from io import BytesIO
 from queue import Queue
 from mss import mss
 from PIL import Image, ImageChops
-from PyQt5.QtCore import Qt, QPoint
+from PyQt5.QtCore import Qt, QPoint, QCoreApplication
 from PyQt5.QtGui import QPixmap, QIcon
 from PyQt5.QtWidgets import (
     QMainWindow,
@@ -104,10 +104,12 @@ class MainWindow(QMainWindow):
             event.accept()
 
     def mouseMoveEvent(self, event):
-        """for the custon title bar dragging across screen"""
+        """for the custom title bar dragging across screen"""
         if event.buttons() == Qt.LeftButton and self.mousePressed:
             self.move(event.globalPos() - self.mousePos)
+            self.layout().update()
             event.accept()
+
 
     def mouseReleaseEvent(self, event):
         """for the custon title bar dragging across screen"""
@@ -442,7 +444,7 @@ class MainWindow(QMainWindow):
         prev_screenshot = capture_screenshot(monitor, monitor_index).convert("L")
 
         while self.capturing:
-            time.sleep(3)
+            time.sleep(2)
             if self.translated_text_window:
                 self.translated_text_window.setWindowOpacity(0) 
                 time.sleep(0.3)
