@@ -4,7 +4,7 @@ from io import BytesIO
 from queue import Queue
 from mss import mss
 from PIL import Image, ImageChops
-from PyQt5.QtCore import Qt, QPoint, QCoreApplication
+from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtGui import QPixmap, QIcon
 from PyQt5.QtWidgets import (
     QMainWindow,
@@ -27,12 +27,12 @@ from components.translated_window import TranslatedTextWindow
 from components.text_to_speech import TextToSpeech
 
 
-def has_changed(prev_screenshot, new_screenshot, threshold=5):
-    """takes two screennshots and compares if there different"""
-    diff = ImageChops.difference(prev_screenshot, new_screenshot)
-    extrema = diff.getextrema()
-    max_diff = extrema[1] if isinstance(extrema[0], int) else extrema[0][1]
-    return diff.getbbox() is not None and max_diff > threshold
+# def has_changed(prev_screenshot, new_screenshot, threshold=5):
+#     """takes two screennshots and compares if there different"""
+#     diff = ImageChops.difference(prev_screenshot, new_screenshot)
+#     extrema = diff.getextrema()
+#     max_diff = extrema[1] if isinstance(extrema[0], int) else extrema[0][1]
+#     return diff.getbbox() is not None and max_diff > threshold
 
 
 def capture_screenshot(monitor, monitor_index):
@@ -452,11 +452,11 @@ class MainWindow(QMainWindow):
             if self.translated_text_window:
                 self.translated_text_window.setWindowOpacity(1)  
                 time.sleep(0.3)
-            if has_changed(prev_screenshot, new_screenshot):
-                prev_screenshot = new_screenshot
-                # new_screenshot.save("sample_screenshot.png")
-                language_code = self.language_from_combo.currentData()
-                self.screenshot_queue.put((new_screenshot, language_code))
+            # if has_changed(prev_screenshot, new_screenshot):
+            prev_screenshot = new_screenshot
+            # new_screenshot.save("sample_screenshot.png")
+            language_code = self.language_from_combo.currentData()
+            self.screenshot_queue.put((new_screenshot, language_code))
 
 
 

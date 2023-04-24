@@ -1,35 +1,18 @@
-import sys
 import pytest
-from PyQt5.QtWidgets import QApplication,QComboBox, QCheckBox, QPushButton, QLabel, QHBoxLayout, QVBoxLayout, QToolButton
+from PyQt5.QtWidgets import QComboBox, QCheckBox, QPushButton, QLabel, QHBoxLayout, QVBoxLayout, QToolButton
 from PyQt5.QtCore import Qt, QPoint, QEvent
 from PyQt5.QtTest import QTest
 from PyQt5.QtGui import QMouseEvent
-from components.main_window import MainWindow,has_changed,capture_screenshot
-from components.text_processor import TextProcessor
-from components.translated_window import TranslatedTextWindow
+from components.main_window import MainWindow,capture_screenshot
 from PIL import Image
 from constants.languages_google import LANGUAGES_GOOGLE
 from constants.languages_ocr import LANGUAGES_OCR
 import unittest
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 import threading
 import time 
-from queue import Queue
 from contextlib import contextmanager
 
-@pytest.fixture
-def red_image():
-    return Image.new('RGB', (100, 100), color='red')
-
-@pytest.fixture
-def green_image():
-    return Image.new('RGB', (100, 100), color='green')
-
-def test_has_changed_identical_images(red_image):
-    assert not has_changed(red_image, red_image)
-
-def test_has_changed_different_images(red_image, green_image):
-    assert has_changed(red_image, green_image)
 
 def test_capture_screenshot(monkeypatch):
     test_image = Image.new('RGB', (200, 200), color='blue')

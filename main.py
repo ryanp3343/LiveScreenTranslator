@@ -20,7 +20,6 @@ def show_error_message():
     msg.exec_()
 
 if __name__ == "__main__":
-    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
     app = QApplication(sys.argv)
 
     if check_tesseract_installation():
