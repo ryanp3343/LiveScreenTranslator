@@ -29,8 +29,6 @@ Key features include:
 
 - [Disclaimer](#disclaimer)
 
-- [Troubleshooting](#troubleshooting)
-
 - [License](#license)
 
 - [Contact](#contact)
@@ -61,7 +59,7 @@ There are two ways to install and run LiveScreenTranslator:
 
 1. Download the latest release of LiveScreenTranslator from the [Releases page](https://github.com/ryanp3343/LiveScreenTranslator/releases). Download the LiveScreenTranslator.zip asset.
 2. Extract the downloaded archive to a location of your choice.
-3. Navigate to the extracted folder and run the `main.exe` file to start the application.
+3. Navigate to the extracted folder and run the `LiveScreenTranslator.exe` file to start the application.
 
 ### Method 2: Clone the Repository
 
@@ -127,22 +125,6 @@ _Gameplay source: [Original Video](https://youtu.be/2sqmuATp_5U)_
 
 Please note that OCR and translation services may not always provide 100% accurate results. Factors that can affect the accuracy of OCR include background, color, image quality, and text size. In terms of translations, certain expressions, slang terms, or idiomatic phrases may not be translated accurately or may lack appropriate equivalents in the target language. Users are advised to consider these potential limitations if relying on LiveScreenTranslator for their translation needs.
 
-
-## Troubleshooting
-
-If you encounter any issues while installing or using LiveScreenTranslator, please check the following common solutions:
-
-1. **Tesseract OCR not found or not working**: Make sure Tesseract OCR is installed at the correct path: `C:\Program Files\Tesseract-OCR\tesseract.exe`. If you've installed it to a different location, update your application settings to point to the correct path.
-
-2. **Application not capturing the selected area**: Ensure that the selected monitor and capture area are correctly set. You can adjust the capture area by clicking the "Select Area" button and redefining the region you want to capture.
-
-3. **Text-to-Speech not working**: Check your system's audio settings and ensure that your speakers or headphones are properly connected and functioning. Make sure the Text-to-Speech option is enabled in the application settings.
-
-4. **Translation not accurate**: Translation quality may vary depending on the clarity and formatting of the text being captured. Try adjusting the capture area or improving the visibility of the text on your screen.
-
-5. **"Save text to file" not working**: Ensure that you have provided a valid file name and location when prompted. Check if the application has the necessary permissions to write files to the selected location.
-
-If you still experience issues or need additional assistance, please [create an issue](https://github.com/ryanp3343/LiveScreenTranslator/issues) on the GitHub repository.
 
 
 ## License
